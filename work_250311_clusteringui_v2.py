@@ -106,26 +106,21 @@ with st.sidebar:
         selected_bead_number = st.selectbox("Select Bead Number for Clustering", bead_numbers)
     if st.button("Run K-Means Clustering") and "metadata" in st.session_state:
         with st.spinner("Running K-Means Clustering..."):
-            features_by_bead = defaultdict(list)
-            files_by_bead = defaultdict(list)
+            all_features = []
+            all_file_names = []
             for entry in st.session_state["metadata"]:
                 if entry["bead_number"] == selected_bead_number:
                     df = pd.read_csv(entry["file"])
                     bead_segment = df.iloc[entry["start_index"]:entry["end_index"] + 1]
                     features = extract_advanced_features(bead_segment.iloc[:, 0].values)
-                    features_by_bead[selected_bead_number].append(features)
-                    files_by_bead[selected_bead_number].append((entry["file"], selected_bead_number))
-            all_scaled_features = []
-            all_file_names = []
-            if selected_bead_number in features_by_bead:
+                    all_features.append(features)
+                    all_file_names.append((entry["file"], entry["bead_number"]))
+            if all_features:
                 scaler = RobustScaler()
-                scaled_features = scaler.fit_transform(features_by_bead[selected_bead_number])
-                all_scaled_features.extend(scaled_features)
-                all_file_names.extend(files_by_bead[selected_bead_number])
-            all_scaled_features = np.array(all_scaled_features)
-            kmeans = KMeans(n_clusters=num_clusters, random_state=42)
-            clusters = kmeans.fit_predict(all_scaled_features)
-            st.session_state["clustering_results"] = {fn: cluster for fn, cluster in zip(all_file_names, clusters)}
+                all_scaled_features = scaler.fit_transform(all_features)
+                kmeans = KMeans(n_clusters=num_clusters, random_state=42)
+                clusters = kmeans.fit_predict(all_scaled_features)
+                st.session_state["clustering_results"] = {fn: cluster for fn, cluster in zip(all_file_names, clusters)}
 
 if "clustering_results" in st.session_state:
     results_df = pd.DataFrame([
