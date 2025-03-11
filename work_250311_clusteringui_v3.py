@@ -124,11 +124,12 @@ if uploaded_file:
             kmeans = KMeans(n_clusters=num_clusters, random_state=42)
             clusters = kmeans.fit_predict(scaled_features)
             
-            pca = PCA(n_components=2)
+            pca = PCA(n_components=3)
             reduced_features = pca.fit_transform(scaled_features)
             cluster_df = pd.DataFrame({
                 "PCA1": reduced_features[:, 0],
                 "PCA2": reduced_features[:, 1],
+                "PCA3": reduced_features[:, 2],
                 "Cluster": clusters,
                 "File Name": file_names,
                 "Bead Number": [selected_bead_number] * len(file_names)
@@ -136,37 +137,19 @@ if uploaded_file:
             
             st.session_state["clustering_results"] = cluster_df
             
-            # Extract the annotation string from the file name
-            cluster_df["Annotation"] = cluster_df["File Name"].apply(
-                lambda x: x.split("_")[-1].split(".csv")[0]
-            )
-            
-            # Calculate a suitable offset based on the PCA2 range
-            pca2_range = cluster_df["PCA2"].max() - cluster_df["PCA2"].min()
-            offset = pca2_range * 0.05  # 5% of the PCA2 range as the vertical offset
-            
-            # Create the scatter plot
-            fig = px.scatter(
+            # Create the 3D scatter plot
+            fig = px.scatter_3d(
                 cluster_df,
                 x="PCA1",
                 y="PCA2",
+                z="PCA3",
                 color=cluster_df["Cluster"].astype(str),
                 hover_data=["File Name", "Bead Number", "Cluster"],
-                title="K-Means Clustering Visualization (PCA Reduced)"
+                title="K-Means Clustering Visualization (3D PCA Reduced)"
             )
             
-            # Add annotations for each point (text slightly above the dots)
-            for i in range(len(cluster_df)):
-                fig.add_annotation(
-                    x=cluster_df.loc[i, "PCA1"],
-                    y=cluster_df.loc[i, "PCA2"] + offset,  # Offset to place the text above the dot
-                    text=cluster_df.loc[i, "Annotation"],
-                    showarrow=False,  # No arrow
-                    font=dict(size=10, color="black"),
-                    align="center"
-                )
-            
-            # Display the plot
+            # Display the plot with ordered legend
+            fig.update_layout(legend=dict(title="Cluster", traceorder="normal"))
             st.plotly_chart(fig)
             
 if "clustering_results" in st.session_state:
