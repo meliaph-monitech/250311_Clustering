@@ -87,7 +87,7 @@ if uploaded_file:
     columns = df_sample.columns.tolist()
     filter_column = st.sidebar.selectbox("Select column for filtering", columns)
     threshold = st.sidebar.number_input("Enter filtering threshold", value=0.0)
-    num_clusters = st.sidebar.slider("Select Number of Clusters", min_value=2, max_value=10, value=3)
+    num_clusters = st.sidebar.slider("Select Number of Clusters", min_value=2, max_value=20, value=3)
     if st.sidebar.button("Segment Beads"):
         with st.spinner("Segmenting beads..."):
             bead_segments = {}
