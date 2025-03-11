@@ -142,11 +142,15 @@ if "clustering_results" in st.session_state:
     cluster_colors = px.colors.qualitative.Set1  # You can change this palette to your liking
     
     # Ensure there are enough colors for all clusters (repeat if necessary)
-    if len(cluster_colors) < sorted_results_df["Cluster"].nunique():
-        cluster_colors = cluster_colors * (sorted_results_df["Cluster"].nunique() // len(cluster_colors) + 1)
+    num_clusters = sorted_results_df["Cluster"].nunique()  # Get the number of unique clusters
+    if len(cluster_colors) < num_clusters:
+        cluster_colors = cluster_colors * (num_clusters // len(cluster_colors) + 1)  # Repeat the color palette
     
     # Convert clusters to string type (important for discrete mapping)
     sorted_results_df["Cluster"] = sorted_results_df["Cluster"].astype(str)
+    
+    # Create a color map for each unique cluster
+    color_map = {str(i): cluster_colors[i] for i, cluster in enumerate(sorted_results_df["Cluster"].unique())}
     
     # Plot the scatter plot with distinct colors for each cluster
     fig = px.scatter(
@@ -154,6 +158,7 @@ if "clustering_results" in st.session_state:
         x="PCA1", y="PCA2", color="Cluster", 
         hover_data=["File Name", "Bead Number", "Cluster"],
         title="K-Means Clustering Visualization (PCA Reduced)",
-        color_discrete_map={str(i): cluster_colors[i] for i in sorted_results_df["Cluster"].unique()},
+        color_discrete_map=color_map,  # Apply the discrete color map
     )
+    
     st.plotly_chart(fig)
