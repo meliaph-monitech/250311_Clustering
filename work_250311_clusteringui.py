@@ -82,7 +82,7 @@ with st.sidebar:
         filter_column = st.selectbox("Select column for filtering", columns)
         threshold = st.number_input("Enter filtering threshold", value=0.0)
 
-        num_clusters = st.slider("Select number of clusters", min_value=2, max_value=10, value=3)
+        num_clusters = st.slider("Select number of clusters", min_value=2, max_value=20, value=3)
 
         if st.button("Segment Beads"):
             with st.spinner("Segmenting beads..."):
