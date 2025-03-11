@@ -9,6 +9,7 @@ from sklearn.preprocessing import RobustScaler
 from scipy.stats import skew, kurtosis
 from scipy.fft import fft, fftfreq
 import numpy as np
+from collections import defaultdict
 
 def extract_zip(zip_path, extract_dir="extracted_csvs"):
     if os.path.exists(extract_dir):
@@ -31,6 +32,23 @@ def extract_zip(zip_path, extract_dir="extracted_csvs"):
 
     return [os.path.join(extract_dir, f) for f in csv_files], extract_dir
 
+def segment_beads(df, column, threshold):
+    start_indices = []
+    end_indices = []
+    signal = df[column].to_numpy()
+    i = 0
+    while i < len(signal):
+        if signal[i] > threshold:
+            start = i
+            while i < len(signal) and signal[i] > threshold:
+                i += 1
+            end = i - 1
+            start_indices.append(start)
+            end_indices.append(end)
+        else:
+            i += 1
+    return list(zip(start_indices, end_indices))
+
 def extract_advanced_features(signal):
     n = len(signal)
     if n == 0:
@@ -39,15 +57,24 @@ def extract_advanced_features(signal):
     std_val = np.std(signal)
     min_val = np.min(signal)
     max_val = np.max(signal)
+    median_val = np.median(signal)
     skewness = skew(signal)
     kurt = kurtosis(signal)
     peak_to_peak = max_val - min_val
     energy = np.sum(signal**2)
+    cv = std_val / mean_val if mean_val != 0 else 0
+    signal_fft = fft(signal)
+    psd = np.abs(signal_fft)**2
+    freqs = fftfreq(n, 1)
+    positive_psd = psd[:n // 2]
+    psd_normalized = positive_psd / np.sum(positive_psd) if np.sum(positive_psd) > 0 else np.zeros_like(positive_psd)
+    spectral_entropy = -np.sum(psd_normalized * np.log2(psd_normalized + 1e-12))
     rms = np.sqrt(np.mean(signal**2))
-    return [mean_val, std_val, min_val, max_val, skewness, kurt, peak_to_peak, energy, rms]
+    slope, _ = np.polyfit(np.arange(n), signal, 1)
+    return [mean_val, std_val, min_val, max_val, median_val, skewness, kurt, peak_to_peak, energy, cv, spectral_entropy, rms, slope]
 
 st.set_page_config(layout="wide")
-st.title("Laser Welding K-Means Clustering")
+st.title("Laser Welding K-Means Clustering - Global Analysis with Feature Selection")
 
 uploaded_file = st.sidebar.file_uploader("Upload a ZIP file containing CSV files", type=["zip"])
 
@@ -61,24 +88,45 @@ if uploaded_file:
     filter_column = st.sidebar.selectbox("Select column for filtering", columns)
     threshold = st.sidebar.number_input("Enter filtering threshold", value=0.0)
     num_clusters = st.sidebar.slider("Select Number of Clusters", min_value=2, max_value=10, value=3)
-    if st.sidebar.button("Run K-Means Clustering"):
-        with st.spinner("Running K-Means Clustering..."):
-            features_by_file = []
-            file_names = []
+    if st.sidebar.button("Segment Beads"):
+        with st.spinner("Segmenting beads..."):
+            bead_segments = {}
+            metadata = []
             for file in csv_files:
                 df = pd.read_csv(file)
-                features = extract_advanced_features(df[filter_column].values)
-                features_by_file.append(features)
-                file_names.append(file)
+                segments = segment_beads(df, filter_column, threshold)
+                if segments:
+                    bead_segments[file] = segments
+                    for bead_num, (start, end) in enumerate(segments, start=1):
+                        metadata.append({"file": file, "bead_number": bead_num, "start_index": start, "end_index": end})
+            st.success("Bead segmentation complete")
+            st.session_state["metadata"] = metadata
+    
+    if "metadata" in st.session_state:
+        bead_numbers = sorted(set(entry["bead_number"] for entry in st.session_state["metadata"]))
+        selected_bead_number = st.sidebar.selectbox("Select Bead Number for Clustering", bead_numbers)
+    
+    if st.sidebar.button("Run K-Means Clustering") and "metadata" in st.session_state:
+        with st.spinner("Running K-Means Clustering..."):
+            features_by_bead = []
+            file_names = []
+            for entry in st.session_state["metadata"]:
+                if entry["bead_number"] == selected_bead_number:
+                    df = pd.read_csv(entry["file"])
+                    bead_segment = df.iloc[entry["start_index"]:entry["end_index"] + 1]
+                    features = extract_advanced_features(bead_segment.iloc[:, 0].values)
+                    features_by_bead.append(features)
+                    file_names.append(entry["file"])
             
             scaler = RobustScaler()
-            scaled_features = scaler.fit_transform(features_by_file)
+            scaled_features = scaler.fit_transform(features_by_bead)
             
             kmeans = KMeans(n_clusters=num_clusters, random_state=42)
             clusters = kmeans.fit_predict(scaled_features)
             
             results_df = pd.DataFrame({
                 "File Name": file_names,
+                "Bead Number": [selected_bead_number] * len(file_names),
                 "Cluster": clusters
             })
             st.session_state["clustering_results"] = results_df
