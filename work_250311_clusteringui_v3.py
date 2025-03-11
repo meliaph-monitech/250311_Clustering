@@ -74,7 +74,7 @@ def extract_advanced_features(signal):
     return [mean_val, std_val, min_val, max_val, median_val, skewness, kurt, peak_to_peak, energy, cv, spectral_entropy, rms, slope]
 
 st.set_page_config(layout="wide")
-st.title("Laser Welding K-Means Clustering - Global Analysis with Feature Selection")
+st.title("Laser Welding K-Means Clustering - Global Analysis with 3D PCA")
 
 uploaded_file = st.sidebar.file_uploader("Upload a ZIP file containing CSV files", type=["zip"])
 
