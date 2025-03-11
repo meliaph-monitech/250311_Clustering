@@ -135,10 +135,37 @@ if uploaded_file:
             })
             
             st.session_state["clustering_results"] = cluster_df
-            
-            fig = px.scatter(cluster_df, x="PCA1", y="PCA2", color=cluster_df["Cluster"].astype(str),
-                             hover_data=["File Name", "Bead Number", "Cluster"],
-                             title="K-Means Clustering Visualization (PCA Reduced)")
+            # Extract the annotation string from the file name
+            cluster_df["Annotation"] = cluster_df["File Name"].apply(
+                lambda x: x.split("_")[-1].split(".csv")[0]
+            )
+
+            # Create the scatter plot with annotations
+            fig = px.scatter(
+                cluster_df,
+                x="PCA1",
+                y="PCA2",
+                color=cluster_df["Cluster"].astype(str),
+                hover_data=["File Name", "Bead Number", "Cluster"],
+                title="K-Means Clustering Visualization (PCA Reduced)"
+            )
+
+            # Add annotations for each point
+            for i in range(len(cluster_df)):
+                fig.add_annotation(
+                    x=cluster_df.loc[i, "PCA1"],
+                    y=cluster_df.loc[i, "PCA2"],
+                    text=cluster_df.loc[i, "Annotation"],
+                    showarrow=True,
+                    arrowhead=2,
+                    arrowsize=1,
+                    arrowwidth=1,
+                    ax=0,  # Adjust horizontal arrow offset if needed
+                    ay=-20,  # Adjust vertical arrow offset if needed
+                    font=dict(size=10, color="black")
+                )
+
+
             st.plotly_chart(fig)
             
 if "clustering_results" in st.session_state:
