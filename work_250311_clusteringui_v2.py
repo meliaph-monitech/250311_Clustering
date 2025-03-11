@@ -156,7 +156,7 @@ if uploaded_file:
                     x=cluster_df.loc[i, "PCA1"],
                     y=cluster_df.loc[i, "PCA2"],
                     text=cluster_df.loc[i, "Annotation"],
-                    # showarrow=True,
+                    showarrow=False,
                     # arrowhead=2,
                     # arrowsize=1,
                     # arrowwidth=1,
