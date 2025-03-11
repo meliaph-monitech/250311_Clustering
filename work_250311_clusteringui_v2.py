@@ -141,6 +141,10 @@ if uploaded_file:
                 lambda x: x.split("_")[-1].split(".csv")[0]
             )
             
+            # Calculate a suitable offset based on the PCA2 range
+            pca2_range = cluster_df["PCA2"].max() - cluster_df["PCA2"].min()
+            offset = pca2_range * 0.02  # 2% of the PCA2 range as the vertical offset
+            
             # Create the scatter plot
             fig = px.scatter(
                 cluster_df,
@@ -151,11 +155,11 @@ if uploaded_file:
                 title="K-Means Clustering Visualization (PCA Reduced)"
             )
             
-            # Add annotations for each point (text above the dots)
+            # Add annotations for each point (text slightly above the dots)
             for i in range(len(cluster_df)):
                 fig.add_annotation(
                     x=cluster_df.loc[i, "PCA1"],
-                    y=cluster_df.loc[i, "PCA2"] + 0.05,  # Offset to place the text above the dot
+                    y=cluster_df.loc[i, "PCA2"] + offset,  # Offset to place the text above the dot
                     text=cluster_df.loc[i, "Annotation"],
                     showarrow=False,  # No arrow
                     font=dict(size=10, color="black"),
