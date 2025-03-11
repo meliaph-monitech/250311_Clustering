@@ -50,28 +50,38 @@ def segment_beads(df, column, threshold):
     return list(zip(start_indices, end_indices))
 
 def extract_advanced_features(signal):
-    n = len(signal)
-    if n == 0:
-        return [0] * 17
-    mean_val = np.mean(signal)
-    std_val = np.std(signal)
-    min_val = np.min(signal)
-    max_val = np.max(signal)
-    median_val = np.median(signal)
-    skewness = skew(signal)
-    kurt = kurtosis(signal)
-    peak_to_peak = max_val - min_val
-    energy = np.sum(signal**2)
-    cv = std_val / mean_val if mean_val != 0 else 0
-    signal_fft = fft(signal)
-    psd = np.abs(signal_fft)**2
-    freqs = fftfreq(n, 1)
-    positive_psd = psd[:n // 2]
-    psd_normalized = positive_psd / np.sum(positive_psd) if np.sum(positive_psd) > 0 else np.zeros_like(positive_psd)
-    spectral_entropy = -np.sum(psd_normalized * np.log2(psd_normalized + 1e-12))
-    rms = np.sqrt(np.mean(signal**2))
-    slope, _ = np.polyfit(np.arange(n), signal, 1)
-    return [mean_val, std_val, min_val, max_val, median_val, skewness, kurt, peak_to_peak, energy, cv, spectral_entropy, rms, slope]
+    if len(signal) == 0:
+        return [0] * 10
+    return [
+        np.mean(signal), np.std(signal), np.min(signal), np.max(signal),
+        np.median(signal), np.max(signal) - np.min(signal),
+        np.sum(signal**2), np.sqrt(np.mean(signal**2)),
+        np.percentile(signal, 25), np.percentile(signal, 75)
+    ]
+
+# def extract_advanced_features(signal):
+#     n = len(signal)
+#     if n == 0:
+#         return [0] * 17
+#     mean_val = np.mean(signal)
+#     std_val = np.std(signal)
+#     min_val = np.min(signal)
+#     max_val = np.max(signal)
+#     median_val = np.median(signal)
+#     skewness = skew(signal)
+#     kurt = kurtosis(signal)
+#     peak_to_peak = max_val - min_val
+#     energy = np.sum(signal**2)
+#     cv = std_val / mean_val if mean_val != 0 else 0
+#     signal_fft = fft(signal)
+#     psd = np.abs(signal_fft)**2
+#     freqs = fftfreq(n, 1)
+#     positive_psd = psd[:n // 2]
+#     psd_normalized = positive_psd / np.sum(positive_psd) if np.sum(positive_psd) > 0 else np.zeros_like(positive_psd)
+#     spectral_entropy = -np.sum(psd_normalized * np.log2(psd_normalized + 1e-12))
+#     rms = np.sqrt(np.mean(signal**2))
+#     slope, _ = np.polyfit(np.arange(n), signal, 1)
+#     return [mean_val, std_val, min_val, max_val, median_val, skewness, kurt, peak_to_peak, energy, cv, spectral_entropy, rms, slope]
 
 st.set_page_config(layout="wide")
 st.title("Laser Welding K-Means Clustering - Global Analysis with Feature Selection")
