@@ -124,12 +124,22 @@ if uploaded_file:
             kmeans = KMeans(n_clusters=num_clusters, random_state=42)
             clusters = kmeans.fit_predict(scaled_features)
             
-            results_df = pd.DataFrame({
+            pca = PCA(n_components=2)
+            reduced_features = pca.fit_transform(scaled_features)
+            cluster_df = pd.DataFrame({
+                "PCA1": reduced_features[:, 0],
+                "PCA2": reduced_features[:, 1],
+                "Cluster": clusters,
                 "File Name": file_names,
-                "Bead Number": [selected_bead_number] * len(file_names),
-                "Cluster": clusters
+                "Bead Number": [selected_bead_number] * len(file_names)
             })
-            st.session_state["clustering_results"] = results_df
+            
+            st.session_state["clustering_results"] = cluster_df
+            
+            fig = px.scatter(cluster_df, x="PCA1", y="PCA2", color=cluster_df["Cluster"].astype(str),
+                             hover_data=["File Name", "Bead Number", "Cluster"],
+                             title="K-Means Clustering Visualization (PCA Reduced)")
+            st.plotly_chart(fig)
             
 if "clustering_results" in st.session_state:
     if st.button("Download Results"):
