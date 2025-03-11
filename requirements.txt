@@ -3,7 +3,3 @@ pandas
 numpy
 scikit-learn
 plotly
-zipfile
-os
-matplotlib.pyplot
-io
