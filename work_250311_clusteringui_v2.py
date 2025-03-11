@@ -156,12 +156,12 @@ if uploaded_file:
                     x=cluster_df.loc[i, "PCA1"],
                     y=cluster_df.loc[i, "PCA2"],
                     text=cluster_df.loc[i, "Annotation"],
-                    showarrow=True,
-                    arrowhead=2,
-                    arrowsize=1,
-                    arrowwidth=1,
-                    ax=0,  # Adjust horizontal arrow offset if needed
-                    ay=-20,  # Adjust vertical arrow offset if needed
+                    # showarrow=True,
+                    # arrowhead=2,
+                    # arrowsize=1,
+                    # arrowwidth=1,
+                    # ax=0,  # Adjust horizontal arrow offset if needed
+                    # ay=-20,  # Adjust vertical arrow offset if needed
                     font=dict(size=10, color="black")
                 )
 
