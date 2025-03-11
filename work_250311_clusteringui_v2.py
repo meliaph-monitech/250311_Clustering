@@ -131,19 +131,7 @@ if uploaded_file:
             })
             st.session_state["clustering_results"] = results_df
             
-            pca = PCA(n_components=2)
-            reduced_features = pca.fit_transform(scaled_features)
-            cluster_df = pd.DataFrame({
-                "PC1": reduced_features[:, 0],
-                "PC2": reduced_features[:, 1],
-                "Cluster": clusters
-            })
-            
-            st.subheader("K-Means Clustering Visualization")
-            fig = px.scatter(cluster_df, x="PC1", y="PC2", color=cluster_df["Cluster"].astype(str),
-                             title="K-Means Clustering Visualization", labels={"color": "Cluster"})
-            st.plotly_chart(fig)
-
 if "clustering_results" in st.session_state:
-    csv_data = st.session_state["clustering_results"].to_csv(index=False).encode('utf-8')
-    st.download_button("Download CSV", data=csv_data, file_name="clustering_results.csv", mime="text/csv")
+    if st.button("Download Results"):
+        csv_data = st.session_state["clustering_results"].to_csv(index=False).encode("utf-8")
+        st.download_button("Download CSV", data=csv_data, file_name="clustering_results.csv", mime="text/csv")
