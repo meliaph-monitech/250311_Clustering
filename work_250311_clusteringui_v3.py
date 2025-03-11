@@ -74,7 +74,7 @@ def extract_advanced_features(signal):
     return [mean_val, std_val, min_val, max_val, median_val, skewness, kurt, peak_to_peak, energy, cv, spectral_entropy, rms, slope]
 
 st.set_page_config(layout="wide")
-st.title("Laser Welding K-Means Clustering - Global Analysis with 3D PCA")
+st.title("Laser Welding K-Means Clustering - Global Analysis with Feature Selection")
 
 uploaded_file = st.sidebar.file_uploader("Upload a ZIP file containing CSV files", type=["zip"])
 
@@ -87,7 +87,9 @@ if uploaded_file:
     columns = df_sample.columns.tolist()
     filter_column = st.sidebar.selectbox("Select column for filtering", columns)
     threshold = st.sidebar.number_input("Enter filtering threshold", value=0.0)
-    num_clusters = st.sidebar.slider("Select Number of Clusters", min_value=2, max_value=10, value=3)
+    num_clusters = st.sidebar.slider("Select Number of Clusters", min_value=2, max_value=20, value=3)
+    plot_height = st.sidebar.slider("Adjust Plot Height", min_value=400, max_value=1000, value=600, step=50)
+    
     if st.sidebar.button("Segment Beads"):
         with st.spinner("Segmenting beads..."):
             bead_segments = {}
@@ -137,6 +139,11 @@ if uploaded_file:
             
             st.session_state["clustering_results"] = cluster_df
             
+            # Add annotations for each point
+            cluster_df["Annotation"] = cluster_df["File Name"].apply(
+                lambda x: x.split("_")[-1].split(".csv")[0]
+            )
+            
             # Create the 3D scatter plot
             fig = px.scatter_3d(
                 cluster_df,
@@ -145,8 +152,21 @@ if uploaded_file:
                 z="PCA3",
                 color=cluster_df["Cluster"].astype(str),
                 hover_data=["File Name", "Bead Number", "Cluster"],
-                title="K-Means Clustering Visualization (3D PCA Reduced)"
+                title="K-Means Clustering Visualization (3D PCA Reduced)",
+                height=plot_height  # Dynamic height adjustment
             )
+            
+            # Add annotations for each point
+            for i in range(len(cluster_df)):
+                fig.add_annotation(
+                    x=cluster_df.loc[i, "PCA1"],
+                    y=cluster_df.loc[i, "PCA2"],
+                    z=cluster_df.loc[i, "PCA3"],
+                    text=cluster_df.loc[i, "Annotation"],
+                    showarrow=False,
+                    font=dict(size=10, color="black"),
+                    align="center"
+                )
             
             # Display the plot with ordered legend
             fig.update_layout(legend=dict(title="Cluster", traceorder="normal"))
