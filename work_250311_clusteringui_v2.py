@@ -150,19 +150,15 @@ if uploaded_file:
                 title="K-Means Clustering Visualization (PCA Reduced)"
             )
 
-            # Add annotations for each point
+            # Add annotations for each point (text at center top of dots)
             for i in range(len(cluster_df)):
                 fig.add_annotation(
                     x=cluster_df.loc[i, "PCA1"],
-                    y=cluster_df.loc[i, "PCA2"],
+                    y=cluster_df.loc[i, "PCA2"] + 0.02,  # Offset slightly above the dot
                     text=cluster_df.loc[i, "Annotation"],
-                    showarrow=False,
-                    # arrowhead=2,
-                    # arrowsize=1,
-                    # arrowwidth=1,
-                    # ax=0,  # Adjust horizontal arrow offset if needed
-                    # ay=-20,  # Adjust vertical arrow offset if needed
-                    font=dict(size=10, color="black")
+                    showarrow=False,  # No arrow
+                    font=dict(size=10, color="black"),
+                    align="center"
                 )
 
 
