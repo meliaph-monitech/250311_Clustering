@@ -101,46 +101,36 @@ with st.sidebar:
                 st.success("Bead segmentation complete")
                 st.session_state["metadata"] = metadata
     num_clusters = st.slider("Select Number of Clusters", min_value=2, max_value=10, value=3)
+    if "metadata" in st.session_state:
+        bead_numbers = sorted(set(entry["bead_number"] for entry in st.session_state["metadata"]))
+        selected_bead_number = st.selectbox("Select Bead Number for Clustering", bead_numbers)
     if st.button("Run K-Means Clustering") and "metadata" in st.session_state:
         with st.spinner("Running K-Means Clustering..."):
             features_by_bead = defaultdict(list)
             files_by_bead = defaultdict(list)
             for entry in st.session_state["metadata"]:
-                df = pd.read_csv(entry["file"])
-                bead_segment = df.iloc[entry["start_index"]:entry["end_index"] + 1]
-                features = extract_advanced_features(bead_segment.iloc[:, 0].values)
-                bead_number = entry["bead_number"]
-                features_by_bead[bead_number].append(features)
-                files_by_bead[bead_number].append((entry["file"], bead_number))
+                if entry["bead_number"] == selected_bead_number:
+                    df = pd.read_csv(entry["file"])
+                    bead_segment = df.iloc[entry["start_index"]:entry["end_index"] + 1]
+                    features = extract_advanced_features(bead_segment.iloc[:, 0].values)
+                    features_by_bead[selected_bead_number].append(features)
+                    files_by_bead[selected_bead_number].append((entry["file"], selected_bead_number))
             all_scaled_features = []
             all_file_names = []
-            for bead_number, feature_matrix in features_by_bead.items():
+            if selected_bead_number in features_by_bead:
                 scaler = RobustScaler()
-                scaled_features = scaler.fit_transform(feature_matrix)
+                scaled_features = scaler.fit_transform(features_by_bead[selected_bead_number])
                 all_scaled_features.extend(scaled_features)
-                all_file_names.extend(files_by_bead[bead_number])
+                all_file_names.extend(files_by_bead[selected_bead_number])
             all_scaled_features = np.array(all_scaled_features)
             kmeans = KMeans(n_clusters=num_clusters, random_state=42)
             clusters = kmeans.fit_predict(all_scaled_features)
             st.session_state["clustering_results"] = {fn: cluster for fn, cluster in zip(all_file_names, clusters)}
 
 if "clustering_results" in st.session_state:
-    bead_numbers = sorted(set(num for _, num in st.session_state["clustering_results"].keys()))
-    selected_bead = st.selectbox("Select Bead Number to Display", bead_numbers)
-    if st.button("Generate Result"):
-        results_df = pd.DataFrame([
-            {"File Name": file_name, "Bead Number": bead_num, "Cluster": cluster}
-            for (file_name, bead_num), cluster in st.session_state["clustering_results"].items()
-        ])
-        csv_data = results_df.to_csv(index=False).encode('utf-8')
-        st.download_button("Download CSV", data=csv_data, file_name="clustering_results.csv", mime="text/csv")
-    st.write("## Visualization")
-    if selected_bead:
-        filtered_results = [(fn, bead, cluster) for (fn, bead), cluster in st.session_state["clustering_results"].items() if bead == selected_bead]
-        file_names, bead_numbers, cluster_labels = zip(*filtered_results)
-        pca = PCA(n_components=2)
-        reduced_features = pca.fit_transform(np.array([features_by_bead[selected_bead][i] for i in range(len(filtered_results))]))
-        fig = px.scatter(x=reduced_features[:, 0], y=reduced_features[:, 1], color=cluster_labels,
-                         hover_data={'File Name': file_names, 'Bead Number': bead_numbers, 'Cluster': cluster_labels})
-        fig.update_layout(title=f"Bead Number {selected_bead}: K-Means Clustering Results", xaxis_title="PCA Component 1", yaxis_title="PCA Component 2")
-        st.plotly_chart(fig)
+    results_df = pd.DataFrame([
+        {"File Name": file_name, "Bead Number": bead_num, "Cluster": cluster}
+        for (file_name, bead_num), cluster in st.session_state["clustering_results"].items()
+    ])
+    csv_data = results_df.to_csv(index=False).encode('utf-8')
+    st.download_button("Download CSV", data=csv_data, file_name="clustering_results.csv", mime="text/csv")
