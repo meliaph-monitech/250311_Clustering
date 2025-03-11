@@ -136,10 +136,15 @@ if "clustering_results" in st.session_state:
         st.download_button("Download CSV", data=csv_data, file_name="clustering_results.csv", mime="text/csv")
 
     st.write("## Visualization")
+    sorted_results_df = st.session_state["clustering_results"].sort_values("Cluster")
+    # Plot the scatter plot with the sorted DataFrame
     fig = px.scatter(
-        st.session_state["clustering_results"],
-        x="PCA1", y="PCA2", color=st.session_state["clustering_results"]["Cluster"].astype(str),
+        sorted_results_df,
+        x="PCA1", y="PCA2", color="Cluster", 
         hover_data=["File Name", "Bead Number", "Cluster"],
-        title="K-Means Clustering Visualization (PCA Reduced)"
+        title="K-Means Clustering Visualization (PCA Reduced)",
+        color_continuous_scale='Viridis',  # You can change this to your preferred scale
+        category_orders={"Cluster": [str(i) for i in sorted_results_df["Cluster"].unique()]},  # Sort the legend
     )
+
     st.plotly_chart(fig)
