@@ -137,14 +137,23 @@ if "clustering_results" in st.session_state:
 
     st.write("## Visualization")
     sorted_results_df = st.session_state["clustering_results"].sort_values("Cluster")
+
+    # Define a color palette with distinct colors for each cluster
+    cluster_colors = px.colors.qualitative.Set1
+
+    # Make sure there are enough colors for the number of clusters
+    if len(cluster_colors) < sorted_results_df["Cluster"].nunique():
+        # If there aren't enough colors, repeat the color palette
+        cluster_colors = cluster_colors * (sorted_results_df["Cluster"].nunique() // len(cluster_colors) + 1)
+
+
     # Plot the scatter plot with the sorted DataFrame
     fig = px.scatter(
         sorted_results_df,
         x="PCA1", y="PCA2", color="Cluster", 
         hover_data=["File Name", "Bead Number", "Cluster"],
         title="K-Means Clustering Visualization (PCA Reduced)",
-        color_continuous_scale='Viridis',  # You can change this to your preferred scale
-        category_orders={"Cluster": [str(i) for i in sorted_results_df["Cluster"].unique()]},  # Sort the legend
+        color_discrete_map={str(i): cluster_colors[i] for i in sorted_results_df["Cluster"].unique()},
     )
 
     st.plotly_chart(fig)
