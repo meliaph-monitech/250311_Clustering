@@ -143,7 +143,7 @@ if uploaded_file:
             
             # Calculate a suitable offset based on the PCA2 range
             pca2_range = cluster_df["PCA2"].max() - cluster_df["PCA2"].min()
-            offset = pca2_range * 0.2  # 20% of the PCA2 range as the vertical offset
+            offset = pca2_range * 0.05  # 5% of the PCA2 range as the vertical offset
             
             # Create the scatter plot
             fig = px.scatter(
