@@ -215,6 +215,10 @@ if uploaded_file:
             st.plotly_chart(fig)
             
 if "clustering_results" in st.session_state:
+    # Display the 2D PCA scatter plot
+    st.write("### 2D PCA Visualization")
+    st.plotly_chart(fig)  # Keep the 2D plot visible
+
     # Add a button to show 3D PCA visualization
     if st.button("Show 3D PCA"):
         # Ensure we have the required data in session state
@@ -222,11 +226,11 @@ if "clustering_results" in st.session_state:
             scaled_features = st.session_state["scaled_features"]
             clusters = st.session_state["clusters"]
             file_names = st.session_state["file_names"]
-            
+
             # Reuse the scaled features and calculate 3D PCA
             pca_3d = PCA(n_components=3)
             reduced_features_3d = pca_3d.fit_transform(scaled_features)
-            
+
             # Create a DataFrame for the 3D PCA results
             cluster_df_3d = pd.DataFrame({
                 "PCA1": reduced_features_3d[:, 0],
@@ -236,11 +240,11 @@ if "clustering_results" in st.session_state:
                 "File Name": file_names,
                 "Bead Number": [selected_bead_number] * len(file_names)
             })
-            
+
             # Create a 3D scatter plot
             fig_3d = go.Figure()
             unique_clusters = cluster_df_3d["Cluster"].unique()
-            
+
             for cluster in unique_clusters:
                 cluster_data = cluster_df_3d[cluster_df_3d["Cluster"] == cluster]
                 fig_3d.add_trace(go.Scatter3d(
@@ -252,19 +256,23 @@ if "clustering_results" in st.session_state:
                     name=f"Cluster {cluster}",
                     hovertext=cluster_data["File Name"]
                 ))
-            
-            # Configure layout for better visualization
+
+            # Configure layout to adjust height and set rectangular prism aspect ratio
             fig_3d.update_layout(
                 title="3D PCA Visualization of K-Means Clusters",
                 scene=dict(
                     xaxis_title="PCA1",
                     yaxis_title="PCA2",
-                    zaxis_title="PCA3"
+                    zaxis_title="PCA3",
+                    aspectmode="manual",  # Custom aspect ratio
+                    aspectratio=dict(x=2, y=1, z=0.5)  # Adjust ratios (rectangular prism)
                 ),
+                height=700,  # Adjust height of the figure
                 legend=dict(title="Clusters")
             )
-            
-            # Display the 3D plot
+
+            # Display the 3D plot without hiding the 2D plot
+            st.write("### 3D PCA Visualization")
             st.plotly_chart(fig_3d)
         else:
             st.error("Please run clustering first to generate 3D PCA visualization.")
