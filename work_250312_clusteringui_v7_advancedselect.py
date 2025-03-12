@@ -10,11 +10,40 @@ from scipy.stats import skew, kurtosis
 from scipy.fft import fft, fftfreq
 import numpy as np
 
+import streamlit as st
+import zipfile
+import os
+import pandas as pd
+import plotly.express as px
+from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import RobustScaler
+from scipy.stats import skew, kurtosis
+from scipy.fft import fft, fftfreq
+import numpy as np
+import tkinter as tk
+from tkinter import filedialog
+
+def select_directory():
+    """
+    Open a dialog for the user to select a directory.
+    """
+    root = tk.Tk()
+    root.withdraw()  # Hide the main window
+    folder_path = filedialog.askdirectory()
+    return folder_path
+
 def extract_zip():
     """
     Allow user to select a directory and choose a ZIP file from a dropdown.
     """
-    folder_path = st.sidebar.text_input("Enter the directory containing ZIP files:")
+    if st.sidebar.button("Select Folder"):
+        folder_path = select_directory()
+        st.session_state.folder_path = folder_path
+    
+    folder_path = st.session_state.get("folder_path", "")
+    st.sidebar.text(f"Selected: {folder_path}")
+    
     zip_files = [f for f in os.listdir(folder_path) if f.endswith(".zip")] if os.path.exists(folder_path) else []
     
     if zip_files:
@@ -44,7 +73,6 @@ def extract_zip():
     else:
         st.sidebar.warning("No ZIP files found in the directory.")
         return None, None
-
 def segment_beads(df, column, threshold):
     start_indices = []
     end_indices = []
