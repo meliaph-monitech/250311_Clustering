@@ -230,7 +230,7 @@ if uploaded_file:
                 y="PCA2",
                 color=cluster_df["Cluster"].astype(str),
                 hover_data=["File Name", "Bead Number", "Cluster"],
-                title=f"K-Means Clustering Visualization ({selected_file_name})"  # Use the selected ZIP file name
+                title=f"K-Means Clustering Visualization"
             )
 
             
