@@ -10,26 +10,40 @@ from scipy.stats import skew, kurtosis
 from scipy.fft import fft, fftfreq
 import numpy as np
 
-def extract_zip(zip_path, extract_dir="extracted_csvs"):
-    if os.path.exists(extract_dir):
-        for file in os.listdir(extract_dir):
-            os.remove(os.path.join(extract_dir, file))
-    else:
-        os.makedirs(extract_dir)
+def extract_zip():
+    """
+    Allow user to select a directory and choose a ZIP file from a dropdown.
+    """
+    folder_path = st.sidebar.text_input("Enter the directory containing ZIP files:")
+    zip_files = [f for f in os.listdir(folder_path) if f.endswith(".zip")] if os.path.exists(folder_path) else []
     
-    try:
-        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-            zip_ref.extractall(extract_dir)
-    except zipfile.BadZipFile:
-        st.error("The uploaded file is not a valid ZIP file.")
-        st.stop()
+    if zip_files:
+        selected_zip = st.sidebar.selectbox("Select a ZIP file:", zip_files)
+        zip_path = os.path.join(folder_path, selected_zip)
+        
+        extract_dir = "extracted_csvs"
+        if os.path.exists(extract_dir):
+            for file in os.listdir(extract_dir):
+                os.remove(os.path.join(extract_dir, file))
+        else:
+            os.makedirs(extract_dir)
+        
+        try:
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                zip_ref.extractall(extract_dir)
+        except zipfile.BadZipFile:
+            st.error("The selected file is not a valid ZIP file.")
+            st.stop()
 
-    csv_files = [f for f in os.listdir(extract_dir) if f.endswith('.csv')]
-    if not csv_files:
-        st.error("No CSV files found in the ZIP file.")
-        st.stop()
+        csv_files = [f for f in os.listdir(extract_dir) if f.endswith('.csv')]
+        if not csv_files:
+            st.error("No CSV files found in the ZIP file.")
+            st.stop()
 
-    return [os.path.join(extract_dir, f) for f in csv_files], extract_dir
+        return [os.path.join(extract_dir, f) for f in csv_files], extract_dir
+    else:
+        st.sidebar.warning("No ZIP files found in the directory.")
+        return None, None
 
 def segment_beads(df, column, threshold):
     start_indices = []
