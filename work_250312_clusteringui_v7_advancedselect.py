@@ -223,15 +223,16 @@ if uploaded_file:
             pca2_range = cluster_df["PCA2"].max() - cluster_df["PCA2"].min()
             offset = pca2_range * 0.05  # 5% of the PCA2 range as the vertical offset
             
-            # Create the scatter plot
+             # Create the scatter plot
             fig = px.scatter(
                 cluster_df,
                 x="PCA1",
                 y="PCA2",
                 color=cluster_df["Cluster"].astype(str),
                 hover_data=["File Name", "Bead Number", "Cluster"],
-                title="K-Means Clustering Visualization (PCA Reduced)"
+                title=f"K-Means Clustering Visualization ({selected_file_name})"  # Use the selected ZIP file name
             )
+
             
             # Add annotations for each point (text slightly above the dots)
             for i in range(len(cluster_df)):
