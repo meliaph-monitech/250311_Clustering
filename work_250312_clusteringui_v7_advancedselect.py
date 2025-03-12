@@ -9,18 +9,6 @@ from sklearn.preprocessing import RobustScaler
 from scipy.stats import skew, kurtosis
 from scipy.fft import fft, fftfreq
 import numpy as np
-
-import streamlit as st
-import zipfile
-import os
-import pandas as pd
-import plotly.express as px
-from sklearn.cluster import KMeans
-from sklearn.decomposition import PCA
-from sklearn.preprocessing import RobustScaler
-from scipy.stats import skew, kurtosis
-from scipy.fft import fft, fftfreq
-import numpy as np
 import tkinter as tk
 from tkinter import filedialog
 
