@@ -37,11 +37,12 @@ def extract_zip(main_zip_path, extract_dir="extracted_zip_contents"):
         st.error("No ZIP files found inside the uploaded ZIP file.")
         st.stop()
 
-    # Let the user select an inner ZIP file
-    selected_inner_zip = st.sidebar.selectbox("Select a ZIP file", inner_zip_files)
-    if not selected_inner_zip:
-        st.error("Please select a ZIP file from the dropdown.")
-        st.stop()
+    # Create a mapping of file names to full paths
+    zip_file_names = [os.path.basename(f) for f in inner_zip_files]  # Extract only the file names
+
+    # Let the user select an inner ZIP file (only show the file names in the dropdown)
+    selected_file_name = st.sidebar.selectbox("Select a ZIP file", zip_file_names)
+    selected_inner_zip = inner_zip_files[zip_file_names.index(selected_file_name)]  # Map back to full path
 
     # Create a subdirectory to extract the selected inner ZIP file
     inner_extract_dir = os.path.join(extract_dir, "inner_extracted_csvs")
@@ -70,7 +71,7 @@ def extract_zip(main_zip_path, extract_dir="extracted_zip_contents"):
         st.stop()
     
     return csv_files, inner_extract_dir
-
+    
 def segment_beads(df, column, threshold):
     start_indices = []
     end_indices = []
