@@ -49,39 +49,54 @@ def segment_beads(df, column, threshold):
             i += 1
     return list(zip(start_indices, end_indices))
 
-def extract_advanced_features(signal):
+def extract_advanced_features(signal, sampling_rate=240):
+    """
+    Extracts frequency-domain features from the signal using FFT.
+    Assumes the signal is sampled at the given sampling rate.
+
+    Parameters:
+    - signal: 1D array-like signal data
+    - sampling_rate: Sampling frequency in Hz (default is 240 Hz)
+
+    Returns:
+    - A list of frequency-domain features
+    """
     if len(signal) == 0:
         return [0] * 10
+    
+    # Perform FFT
+    N = len(signal)
+    fft_values = fft(signal)
+    fft_magnitudes = np.abs(fft_values[:N // 2])  # Take magnitudes of positive frequencies
+    freqs = fftfreq(N, 1 / sampling_rate)[:N // 2]  # Positive frequency components
+    
+    # Frequency-domain features
+    total_power = np.sum(fft_magnitudes**2)  # Total power of the spectrum
+    mean_freq = np.sum(freqs * fft_magnitudes) / np.sum(fft_magnitudes)  # Mean frequency (centroid)
+    peak_freq = freqs[np.argmax(fft_magnitudes)]  # Frequency with maximum amplitude
+    bandwidth = np.sqrt(np.sum((freqs - mean_freq)**2 * fft_magnitudes) / np.sum(fft_magnitudes))  # Spectral bandwidth
+    spectral_entropy = -np.sum((fft_magnitudes / np.sum(fft_magnitudes)) * 
+                               np.log2(fft_magnitudes / np.sum(fft_magnitudes) + 1e-12))  # Spectral entropy
+    skewness = skew(fft_magnitudes)  # Skewness of the spectrum
+    kurt = kurtosis(fft_magnitudes)  # Kurtosis of the spectrum
+    
+    # Select features in the 240 Hz band if needed (optional, based on requirements)
+    band_mask = (freqs >= 0) & (freqs <= sampling_rate / 2)
+    band_power = np.sum(fft_magnitudes[band_mask]**2)  # Power within the band
+    
+    # Return frequency-domain features
     return [
-        np.mean(signal), np.std(signal), np.min(signal), np.max(signal),
-        np.median(signal), np.max(signal) - np.min(signal),
-        np.sum(signal**2), np.sqrt(np.mean(signal**2)),
-        np.percentile(signal, 25), np.percentile(signal, 75)
+        total_power,
+        mean_freq,
+        peak_freq,
+        bandwidth,
+        spectral_entropy,
+        skewness,
+        kurt,
+        band_power,
+        np.max(fft_magnitudes),  # Maximum amplitude in the spectrum
+        np.sum(fft_magnitudes)   # Sum of amplitudes
     ]
-
-# def extract_advanced_features(signal):
-#     n = len(signal)
-#     if n == 0:
-#         return [0] * 17
-#     mean_val = np.mean(signal)
-#     std_val = np.std(signal)
-#     min_val = np.min(signal)
-#     max_val = np.max(signal)
-#     median_val = np.median(signal)
-#     skewness = skew(signal)
-#     kurt = kurtosis(signal)
-#     peak_to_peak = max_val - min_val
-#     energy = np.sum(signal**2)
-#     cv = std_val / mean_val if mean_val != 0 else 0
-#     signal_fft = fft(signal)
-#     psd = np.abs(signal_fft)**2
-#     freqs = fftfreq(n, 1)
-#     positive_psd = psd[:n // 2]
-#     psd_normalized = positive_psd / np.sum(positive_psd) if np.sum(positive_psd) > 0 else np.zeros_like(positive_psd)
-#     spectral_entropy = -np.sum(psd_normalized * np.log2(psd_normalized + 1e-12))
-#     rms = np.sqrt(np.mean(signal**2))
-#     slope, _ = np.polyfit(np.arange(n), signal, 1)
-#     return [mean_val, std_val, min_val, max_val, median_val, skewness, kurt, peak_to_peak, energy, cv, spectral_entropy, rms, slope]
 
 st.set_page_config(layout="wide")
 st.title("Laser Welding K-Means Clustering - Global Analysis with Feature Selection")
