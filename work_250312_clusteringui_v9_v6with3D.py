@@ -158,7 +158,14 @@ if uploaded_file:
             
             st.session_state["clustering_results"] = cluster_df
             
-            fig = px.scatter(
+            # Add annotations and save the 2D figure
+            cluster_df["Annotation"] = cluster_df["File Name"].apply(
+                lambda x: x.split("_")[-1].split(".csv")[0]
+            )
+            pca2_range = cluster_df["PCA2"].max() - cluster_df["PCA2"].min()
+            offset = pca2_range * 0.05  # Adjust annotation position
+            
+            fig_2d = px.scatter(
                 cluster_df,
                 x="PCA1",
                 y="PCA2",
@@ -166,62 +173,60 @@ if uploaded_file:
                 hover_data=["File Name", "Bead Number", "Cluster"],
                 title="K-Means Clustering Visualization (PCA Reduced)"
             )
-            st.session_state["fig_2d"] = fig
-            st.plotly_chart(fig)
+            
+            for i in range(len(cluster_df)):
+                fig_2d.add_annotation(
+                    x=cluster_df.loc[i, "PCA1"],
+                    y=cluster_df.loc[i, "PCA2"] + offset,
+                    text=cluster_df.loc[i, "Annotation"],
+                    showarrow=False,
+                    font=dict(size=10, color="black")
+                )
+            
+            st.session_state["fig_2d"] = fig_2d
+            st.plotly_chart(fig_2d)
 
 if "clustering_results" in st.session_state:
-    # Display the 2D PCA Visualization
     st.write("### 2D PCA Visualization")
-    st.plotly_chart(st.session_state["fig_2d"], key="2d_pca_plot")  # Add a unique key for the 2D plot
-
-    # Add a button to show the 3D PCA visualization
+    st.plotly_chart(st.session_state["fig_2d"])
     if st.button("Show 3D PCA"):
-        if "scaled_features" in st.session_state and "clusters" in st.session_state:
-            scaled_features = st.session_state["scaled_features"]
-            clusters = st.session_state["clusters"]
-            file_names = st.session_state["file_names"]
+        scaled_features = st.session_state["scaled_features"]
+        clusters = st.session_state["clusters"]
+        file_names = st.session_state["file_names"]
 
-            # Perform 3D PCA
-            pca_3d = PCA(n_components=3)
-            reduced_features_3d = pca_3d.fit_transform(scaled_features)
+        pca_3d = PCA(n_components=3)
+        reduced_features_3d = pca_3d.fit_transform(scaled_features)
+        cluster_df_3d = pd.DataFrame({
+            "PCA1": reduced_features_3d[:, 0],
+            "PCA2": reduced_features_3d[:, 1],
+            "PCA3": reduced_features_3d[:, 2],
+            "Cluster": clusters,
+            "File Name": file_names
+        })
 
-            # Create a DataFrame for the 3D PCA results
-            cluster_df_3d = pd.DataFrame({
-                "PCA1": reduced_features_3d[:, 0],
-                "PCA2": reduced_features_3d[:, 1],
-                "PCA3": reduced_features_3d[:, 2],
-                "Cluster": clusters,
-                "File Name": file_names,
-                "Bead Number": [selected_bead_number] * len(file_names)
-            })
+        fig_3d = go.Figure()
+        unique_clusters = cluster_df_3d["Cluster"].unique()
+        for cluster in unique_clusters:
+            cluster_data = cluster_df_3d[cluster_df_3d["Cluster"] == cluster]
+            fig_3d.add_trace(go.Scatter3d(
+                x=cluster_data["PCA1"],
+                y=cluster_data["PCA2"],
+                z=cluster_data["PCA3"],
+                mode="markers",
+                marker=dict(size=6),
+                name=f"Cluster {cluster}"
+            ))
 
-            # Create a 3D scatter plot
-            fig_3d = go.Figure()
-            unique_clusters = cluster_df_3d["Cluster"].unique()
-            for cluster in unique_clusters:
-                cluster_data = cluster_df_3d[cluster_df_3d["Cluster"] == cluster]
-                fig_3d.add_trace(go.Scatter3d(
-                    x=cluster_data["PCA1"],
-                    y=cluster_data["PCA2"],
-                    z=cluster_data["PCA3"],
-                    mode="markers",
-                    marker=dict(size=6),
-                    name=f"Cluster {cluster}",
-                    hovertext=cluster_data["File Name"]
-                ))
-
-            # Adjust layout for rectangular prism and height
-            fig_3d.update_layout(
-                title="3D PCA Visualization of K-Means Clusters",
-                scene=dict(
-                    xaxis_title="PCA1",
-                    yaxis_title="PCA2",
-                    zaxis_title="PCA3",
-                    aspectmode="manual",
-                    aspectratio=dict(x=2, y=1, z=0.5)  # Rectangular prism aspect ratio
-                ),
-                height=700  # Adjust height of the 3D plot
-            )
-
-            # Display the 3D plot
-            st.plotly_chart(fig_3d, key="3d_pca_plot")  # Add a unique key for the 3D plot
+        fig_3d.update_layout(
+            title="3D PCA Visualization",
+            scene=dict(
+                xaxis_title="PCA1",
+                yaxis_title="PCA2",
+                zaxis_title="PCA3",
+                aspectmode="manual",
+                aspectratio=dict(x=2, y=1, z=0.5)
+            ),
+            height=700
+        )
+        st.write("### 3D PCA Visualization")
+        st.plotly_chart(fig_3d)
