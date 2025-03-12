@@ -209,10 +209,6 @@ if uploaded_file:
                 title=f"K-Means Clustering Visualization ({selected_zip_name})"
             )
             
-            # Detect Streamlit theme (light or dark)
-            streamlit_theme = st.get_option("theme.base")
-            text_color = "white" if streamlit_theme == "dark" else "black"  # Set text color based on Streamlit theme
-            
             # Add annotations with dynamic text color
             for i in range(len(cluster_df)):
                 fig.add_annotation(
@@ -220,7 +216,7 @@ if uploaded_file:
                     y=cluster_df.loc[i, "PCA2"] + offset,
                     text=cluster_df.loc[i, "Annotation"],
                     showarrow=False,
-                    font=dict(size=11, color=text_color),  # Use dynamic text color
+                    font=dict(size=11, color="black"),  # Use dynamic text color
                     align="center"
                 )
             
