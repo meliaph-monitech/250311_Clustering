@@ -10,58 +10,57 @@ from scipy.stats import skew, kurtosis
 from scipy.fft import fft, fftfreq
 import numpy as np
 
-def extract_zip(uploaded_zip):
-    """
-    Extracts a main ZIP file containing multiple ZIP files,
-    lets the user select one, and extracts its contents.
-    """
-    main_extract_dir = "main_extracted_zip"
-    if os.path.exists(main_extract_dir):
-        for file in os.listdir(main_extract_dir):
-            os.remove(os.path.join(main_extract_dir, file))
-    else:
-        os.makedirs(main_extract_dir)
-    
-    # Save uploaded ZIP file and extract
-    with open("main.zip", "wb") as f:
-        f.write(uploaded_zip.getbuffer())
-    
-    try:
-        with zipfile.ZipFile("main.zip", 'r') as zip_ref:
-            zip_ref.extractall(main_extract_dir)
-    except zipfile.BadZipFile:
-        st.error("The uploaded file is not a valid ZIP file.")
-        st.stop()
-    
-    inner_zip_files = [f for f in os.listdir(main_extract_dir) if f.endswith('.zip')]
-    if not inner_zip_files:
-        st.error("No ZIP files found inside the uploaded ZIP.")
-        st.stop()
-    
-    selected_inner_zip = st.sidebar.selectbox("Select a ZIP file to extract:", inner_zip_files)
-    inner_zip_path = os.path.join(main_extract_dir, selected_inner_zip)
-    
-    extract_dir = "extracted_csvs"
+def extract_zip(main_zip_path, extract_dir="extracted_zip_contents"):
+    # Clear the extraction directory if it exists
     if os.path.exists(extract_dir):
         for file in os.listdir(extract_dir):
             os.remove(os.path.join(extract_dir, file))
     else:
         os.makedirs(extract_dir)
     
+    # Extract the main ZIP file
     try:
-        with zipfile.ZipFile(inner_zip_path, 'r') as zip_ref:
-            zip_ref.extractall(extract_dir)
+        with zipfile.ZipFile(main_zip_path, 'r') as main_zip:
+            main_zip.extractall(extract_dir)
     except zipfile.BadZipFile:
-        st.error("The selected ZIP file is not valid.")
+        st.error("The uploaded file is not a valid ZIP file.")
         st.stop()
     
-    csv_files = [f for f in os.listdir(extract_dir) if f.endswith('.csv')]
+    # Find all ZIP files inside the extracted folder
+    inner_zip_files = [os.path.join(extract_dir, f) for f in os.listdir(extract_dir) if f.endswith('.zip')]
+    if not inner_zip_files:
+        st.error("No ZIP files found inside the uploaded ZIP file.")
+        st.stop()
+    
+    # Let the user select an inner ZIP file
+    selected_inner_zip = st.sidebar.selectbox("Select a ZIP file", inner_zip_files)
+    if not selected_inner_zip:
+        st.error("Please select a ZIP file from the dropdown.")
+        st.stop()
+    
+    # Create a subdirectory to extract the selected inner ZIP file
+    inner_extract_dir = os.path.join(extract_dir, "inner_extracted_csvs")
+    if os.path.exists(inner_extract_dir):
+        for file in os.listdir(inner_extract_dir):
+            os.remove(os.path.join(inner_extract_dir, file))
+    else:
+        os.makedirs(inner_extract_dir)
+    
+    # Extract the selected inner ZIP file
+    try:
+        with zipfile.ZipFile(selected_inner_zip, 'r') as inner_zip:
+            inner_zip.extractall(inner_extract_dir)
+    except zipfile.BadZipFile:
+        st.error("The selected file is not a valid ZIP file.")
+        st.stop()
+    
+    # Find all CSV files in the extracted inner ZIP folder
+    csv_files = [os.path.join(inner_extract_dir, f) for f in os.listdir(inner_extract_dir) if f.endswith('.csv')]
     if not csv_files:
-        st.error("No CSV files found in the extracted ZIP file.")
+        st.error("No CSV files found in the selected ZIP file.")
         st.stop()
     
-    return [os.path.join(extract_dir, f) for f in csv_files], extract_dir
-
+    return csv_files, inner_extract_dir
 
 def segment_beads(df, column, threshold):
     start_indices = []
@@ -132,21 +131,12 @@ def extract_advanced_features(signal, sampling_rate=240):
 st.set_page_config(layout="wide")
 st.title("Laser Welding K-Means Clustering V6 Global Analysis with Frequency-domain Features")
 
-uploaded_file = st.sidebar.file_uploader("Upload a ZIP file containing multiple ZIP files", type=["zip"])
-
-if uploaded_file:
-    zip_path = "uploaded.zip"  # Define a fixed filename
-    with open(zip_path, "wb") as f:
-        f.write(uploaded_file.getbuffer())  # Save uploaded file as 'uploaded.zip'
-
-    csv_files, extract_dir = extract_zip(zip_path)  # Now pass the file path
-
-    st.sidebar.success(f"Extracted {len(csv_files)} CSV files")
+uploaded_file = st.sidebar.file_uploader("Upload a ZIP file containing CSV files", type=["zip"])
 
 if uploaded_file:
     with open("temp.zip", "wb") as f:
         f.write(uploaded_file.getbuffer())
-    csv_files, extract_dir = extract_zip(uploaded_file)
+    csv_files, extract_dir = extract_zip("temp.zip")
     st.sidebar.success(f"Extracted {len(csv_files)} CSV files")
     df_sample = pd.read_csv(csv_files[0])
     columns = df_sample.columns.tolist()
