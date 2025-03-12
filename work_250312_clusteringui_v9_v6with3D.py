@@ -217,7 +217,7 @@ if uploaded_file:
 if "clustering_results" in st.session_state:
     # Display the 2D PCA scatter plot
     st.write("### 2D PCA Visualization")
-    st.plotly_chart(fig)  # Keep the 2D plot visible
+    st.plotly_chart(fig, key="2d_pca_plot")  # Add a unique key for the 2D plot
 
     # Add a button to show 3D PCA visualization
     if st.button("Show 3D PCA"):
@@ -273,6 +273,6 @@ if "clustering_results" in st.session_state:
 
             # Display the 3D plot without hiding the 2D plot
             st.write("### 3D PCA Visualization")
-            st.plotly_chart(fig_3d)
+            st.plotly_chart(fig_3d, key="3d_pca_plot")  # Add a unique key for the 3D plot
         else:
             st.error("Please run clustering first to generate 3D PCA visualization.")
