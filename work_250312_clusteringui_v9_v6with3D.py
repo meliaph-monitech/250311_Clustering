@@ -81,9 +81,20 @@ def extract_advanced_features(signal, sampling_rate=240):
 st.set_page_config(layout="wide")
 st.title("Laser Welding K-Means Clustering V6 Global Analysis with Frequency-domain Features")
 
+# Initialize session state to reset figures when a new file is uploaded
+if "fig_2d" not in st.session_state:
+    st.session_state["fig_2d"] = None
+if "fig_3d" not in st.session_state:
+    st.session_state["fig_3d"] = None
+
 uploaded_file = st.sidebar.file_uploader("Upload a ZIP file containing CSV files", type=["zip"])
 
 if uploaded_file:
+    # Clear previous session state when a new file is uploaded
+    st.session_state["fig_2d"] = None
+    st.session_state["fig_3d"] = None
+    st.session_state["metadata"] = None
+
     with open("temp.zip", "wb") as f:
         f.write(uploaded_file.getbuffer())
     csv_files, extract_dir = extract_zip("temp.zip")
@@ -184,49 +195,53 @@ if uploaded_file:
                 )
             
             st.session_state["fig_2d"] = fig_2d
+            st.write("### 2D PCA Visualization")
             st.plotly_chart(fig_2d, key="2d_chart")
 
-if "clustering_results" in st.session_state:
+if "fig_2d" in st.session_state and st.session_state["fig_2d"]:
     st.write("### 2D PCA Visualization")
     st.plotly_chart(st.session_state["fig_2d"], key="2d_chart_duplicate")
-    if st.button("Show 3D PCA"):
-        scaled_features = st.session_state["scaled_features"]
-        clusters = st.session_state["clusters"]
-        file_names = st.session_state["file_names"]
 
-        pca_3d = PCA(n_components=3)
-        reduced_features_3d = pca_3d.fit_transform(scaled_features)
-        cluster_df_3d = pd.DataFrame({
-            "PCA1": reduced_features_3d[:, 0],
-            "PCA2": reduced_features_3d[:, 1],
-            "PCA3": reduced_features_3d[:, 2],
-            "Cluster": clusters,
-            "File Name": file_names
-        })
+if "scaled_features" in st.session_state and st.button("Show 3D PCA"):
+    scaled_features = st.session_state["scaled_features"]
+    clusters = st.session_state["clusters"]
+    file_names = st.session_state["file_names"]
 
-        fig_3d = go.Figure()
-        unique_clusters = cluster_df_3d["Cluster"].unique()
-        for cluster in unique_clusters:
-            cluster_data = cluster_df_3d[cluster_df_3d["Cluster"] == cluster]
-            fig_3d.add_trace(go.Scatter3d(
-                x=cluster_data["PCA1"],
-                y=cluster_data["PCA2"],
-                z=cluster_data["PCA3"],
-                mode="markers",
-                marker=dict(size=6),
-                name=f"Cluster {cluster}"
-            ))
+    pca_3d = PCA(n_components=3)
+    reduced_features_3d = pca_3d.fit_transform(scaled_features)
+    cluster_df_3d = pd.DataFrame({
+        "PCA1": reduced_features_3d[:, 0],
+        "PCA2": reduced_features_3d[:, 1],
+        "PCA3": reduced_features_3d[:, 2],
+        "Cluster": clusters,
+        "File Name": file_names
+    })
 
-        fig_3d.update_layout(
-            title="3D PCA Visualization",
-            scene=dict(
-                xaxis_title="PCA1",
-                yaxis_title="PCA2",
-                zaxis_title="PCA3",
-                aspectmode="manual",
-                aspectratio=dict(x=2, y=1, z=0.5)
-            ),
-            height=700
-        )
-        st.write("### 3D PCA Visualization")
-        st.plotly_chart(fig_3d, key="3d_chart")
+    fig_3d = go.Figure()
+    unique_clusters = cluster_df_3d["Cluster"].unique()
+    for cluster in unique_clusters:
+        cluster_data = cluster_df_3d[cluster_df_3d["Cluster"] == cluster]
+        fig_3d.add_trace(go.Scatter3d(
+            x=cluster_data["PCA1"],
+            y=cluster_data["PCA2"],
+            z=cluster_data["PCA3"],
+            mode="markers",
+            marker=dict(size=6),
+            name=f"Cluster {cluster}"
+        ))
+
+    fig_3d.update_layout(
+        title="3D PCA Visualization",
+        scene=dict(
+            xaxis_title="PCA1",
+            yaxis_title="PCA2",
+            zaxis_title="PCA3",
+            aspectmode="manual",
+            aspectratio=dict(x=2, y=1, z=0.5)
+        ),
+        height=700
+    )
+
+    st.session_state["fig_3d"] = fig_3d
+    st.write("### 3D PCA Visualization")
+    st.plotly_chart(fig_3d, key="3d_chart")
