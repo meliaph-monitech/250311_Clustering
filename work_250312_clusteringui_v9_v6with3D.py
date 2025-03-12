@@ -210,3 +210,53 @@ if "clustering_results" in st.session_state:
     if st.button("Download Results"):
         csv_data = st.session_state["clustering_results"].to_csv(index=False).encode("utf-8")
         st.download_button("Download CSV", data=csv_data, file_name="clustering_results.csv", mime="text/csv")
+        # Add a button to show 3D PCA visualization
+    if st.button("Show 3D PCA"):
+        # Ensure we have the clustering results and scaled features
+        clustering_results = st.session_state["clustering_results"]
+        
+        # Reuse the scaled features and calculate 3D PCA
+        pca_3d = PCA(n_components=3)
+        reduced_features_3d = pca_3d.fit_transform(scaled_features)
+        
+        # Create a DataFrame for the 3D PCA results
+        cluster_df_3d = pd.DataFrame({
+            "PCA1": reduced_features_3d[:, 0],
+            "PCA2": reduced_features_3d[:, 1],
+            "PCA3": reduced_features_3d[:, 2],
+            "Cluster": clusters,
+            "File Name": file_names,
+            "Bead Number": [selected_bead_number] * len(file_names)
+        })
+        
+        # Create a 3D scatter plot
+        fig_3d = go.Figure()
+        unique_clusters = cluster_df_3d["Cluster"].unique()
+        
+        for cluster in unique_clusters:
+            cluster_data = cluster_df_3d[cluster_df_3d["Cluster"] == cluster]
+            fig_3d.add_trace(go.Scatter3d(
+                x=cluster_data["PCA1"],
+                y=cluster_data["PCA2"],
+                z=cluster_data["PCA3"],
+                mode="markers",
+                marker=dict(size=6),
+                name=f"Cluster {cluster}",
+                hovertext=cluster_data["File Name"]
+            ))
+        
+        # Configure layout for better visualization
+        fig_3d.update_layout(
+            title="3D PCA Visualization of K-Means Clusters",
+            scene=dict(
+                xaxis_title="PCA1",
+                yaxis_title="PCA2",
+                zaxis_title="PCA3"
+            ),
+            legend=dict(title="Clusters")
+        )
+        
+        # Display the 3D plot
+        st.plotly_chart(fig_3d)
+    else:
+        st.error("Please run clustering first to enable 3D PCA visualization.")
