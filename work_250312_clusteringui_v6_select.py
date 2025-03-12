@@ -9,7 +9,6 @@ from sklearn.preprocessing import RobustScaler
 from scipy.stats import skew, kurtosis
 from scipy.fft import fft, fftfreq
 import numpy as np
-from collections import defaultdict
 
 def extract_zip(zip_path, extract_dir="extracted_csvs"):
     if os.path.exists(extract_dir):
@@ -131,6 +130,14 @@ if uploaded_file:
         bead_numbers = sorted(set(entry["bead_number"] for entry in st.session_state["metadata"]))
         selected_bead_number = st.sidebar.selectbox("Select Bead Number for Clustering", bead_numbers)
     
+    # Feature selection multi-select
+    feature_names = [
+        "Total Power", "Mean Frequency", "Peak Frequency", "Bandwidth", 
+        "Spectral Entropy", "Skewness", "Kurtosis", "Band Power", 
+        "Max Amplitude", "Sum of Amplitudes"
+    ]
+    selected_features = st.sidebar.multiselect("Select Features for Clustering", feature_names, default=feature_names)
+    
     if st.sidebar.button("Run K-Means Clustering") and "metadata" in st.session_state:
         with st.spinner("Running K-Means Clustering..."):
             features_by_bead = []
@@ -139,7 +146,12 @@ if uploaded_file:
                 if entry["bead_number"] == selected_bead_number:
                     df = pd.read_csv(entry["file"])
                     bead_segment = df.iloc[entry["start_index"]:entry["end_index"] + 1]
-                    features = extract_advanced_features(bead_segment.iloc[:, 0].values)
+                    full_features = extract_advanced_features(bead_segment.iloc[:, 0].values)
+                    
+                    # Map selected features to indices
+                    feature_indices = [feature_names.index(f) for f in selected_features]
+                    features = [full_features[i] for i in feature_indices]
+                    
                     features_by_bead.append(features)
                     file_names.append(entry["file"])
             
