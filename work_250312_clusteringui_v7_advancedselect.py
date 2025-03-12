@@ -140,7 +140,7 @@ if uploaded_file:
 if uploaded_file:
     with open("temp.zip", "wb") as f:
         f.write(uploaded_file.getbuffer())
-    csv_files, extract_dir = extract_zip("temp.zip")
+    csv_files, extract_dir = extract_zip(uploaded_file)
     st.sidebar.success(f"Extracted {len(csv_files)} CSV files")
     df_sample = pd.read_csv(csv_files[0])
     columns = df_sample.columns.tolist()
