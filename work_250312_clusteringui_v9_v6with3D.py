@@ -184,11 +184,11 @@ if uploaded_file:
                 )
             
             st.session_state["fig_2d"] = fig_2d
-            st.plotly_chart(fig_2d)
+            st.plotly_chart(fig_2d, key="2d_chart")
 
 if "clustering_results" in st.session_state:
     st.write("### 2D PCA Visualization")
-    st.plotly_chart(st.session_state["fig_2d"])
+    st.plotly_chart(st.session_state["fig_2d"], key="2d_chart_duplicate")
     if st.button("Show 3D PCA"):
         scaled_features = st.session_state["scaled_features"]
         clusters = st.session_state["clusters"]
@@ -229,4 +229,4 @@ if "clustering_results" in st.session_state:
             height=700
         )
         st.write("### 3D PCA Visualization")
-        st.plotly_chart(fig_3d)
+        st.plotly_chart(fig_3d, key="3d_chart")
