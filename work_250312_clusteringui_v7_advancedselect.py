@@ -9,12 +9,17 @@ from sklearn.preprocessing import RobustScaler
 from scipy.stats import skew, kurtosis
 from scipy.fft import fft, fftfreq
 import numpy as np
+import shutil  # Required for removing directories
 
 def extract_zip(main_zip_path, extract_dir="extracted_zip_contents"):
     # Clear the extraction directory if it exists
     if os.path.exists(extract_dir):
         for file in os.listdir(extract_dir):
-            os.remove(os.path.join(extract_dir, file))
+            file_path = os.path.join(extract_dir, file)
+            if os.path.isfile(file_path):
+                os.remove(file_path)  # Remove files
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)  # Remove directories
     else:
         os.makedirs(extract_dir)
     
@@ -31,18 +36,22 @@ def extract_zip(main_zip_path, extract_dir="extracted_zip_contents"):
     if not inner_zip_files:
         st.error("No ZIP files found inside the uploaded ZIP file.")
         st.stop()
-    
+
     # Let the user select an inner ZIP file
     selected_inner_zip = st.sidebar.selectbox("Select a ZIP file", inner_zip_files)
     if not selected_inner_zip:
         st.error("Please select a ZIP file from the dropdown.")
         st.stop()
-    
+
     # Create a subdirectory to extract the selected inner ZIP file
     inner_extract_dir = os.path.join(extract_dir, "inner_extracted_csvs")
     if os.path.exists(inner_extract_dir):
         for file in os.listdir(inner_extract_dir):
-            os.remove(os.path.join(inner_extract_dir, file))
+            file_path = os.path.join(inner_extract_dir, file)
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
     else:
         os.makedirs(inner_extract_dir)
     
