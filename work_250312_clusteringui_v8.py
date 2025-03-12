@@ -70,8 +70,8 @@ def extract_zip(main_zip_path, extract_dir="extracted_zip_contents"):
         st.error("No CSV files found in the selected ZIP file.")
         st.stop()
     
-    return csv_files, inner_extract_dir
-    
+    return csv_files, inner_extract_dir, selected_file_name
+
 def segment_beads(df, column, threshold):
     start_indices = []
     end_indices = []
@@ -90,17 +90,6 @@ def segment_beads(df, column, threshold):
     return list(zip(start_indices, end_indices))
 
 def extract_advanced_features(signal, sampling_rate=240):
-    """
-    Extracts frequency-domain features from the signal using FFT.
-    Assumes the signal is sampled at the given sampling rate.
-
-    Parameters:
-    - signal: 1D array-like signal data
-    - sampling_rate: Sampling frequency in Hz (default is 240 Hz)
-
-    Returns:
-    - A list of frequency-domain features
-    """
     if len(signal) == 0:
         return [0] * 10
     
@@ -111,31 +100,20 @@ def extract_advanced_features(signal, sampling_rate=240):
     freqs = fftfreq(N, 1 / sampling_rate)[:N // 2]  # Positive frequency components
     
     # Frequency-domain features
-    total_power = np.sum(fft_magnitudes**2)  # Total power of the spectrum
-    mean_freq = np.sum(freqs * fft_magnitudes) / np.sum(fft_magnitudes)  # Mean frequency (centroid)
-    peak_freq = freqs[np.argmax(fft_magnitudes)]  # Frequency with maximum amplitude
-    bandwidth = np.sqrt(np.sum((freqs - mean_freq)**2 * fft_magnitudes) / np.sum(fft_magnitudes))  # Spectral bandwidth
+    total_power = np.sum(fft_magnitudes**2)
+    mean_freq = np.sum(freqs * fft_magnitudes) / np.sum(fft_magnitudes)
+    peak_freq = freqs[np.argmax(fft_magnitudes)]
+    bandwidth = np.sqrt(np.sum((freqs - mean_freq)**2 * fft_magnitudes) / np.sum(fft_magnitudes))
     spectral_entropy = -np.sum((fft_magnitudes / np.sum(fft_magnitudes)) * 
-                               np.log2(fft_magnitudes / np.sum(fft_magnitudes) + 1e-12))  # Spectral entropy
-    skewness = skew(fft_magnitudes)  # Skewness of the spectrum
-    kurt = kurtosis(fft_magnitudes)  # Kurtosis of the spectrum
+                               np.log2(fft_magnitudes / np.sum(fft_magnitudes) + 1e-12))
+    skewness = skew(fft_magnitudes)
+    kurt = kurtosis(fft_magnitudes)
+    band_power = np.sum(fft_magnitudes**2)
     
-    # Select features in the 240 Hz band if needed (optional, based on requirements)
-    band_mask = (freqs >= 0) & (freqs <= sampling_rate / 2)
-    band_power = np.sum(fft_magnitudes[band_mask]**2)  # Power within the band
-    
-    # Return frequency-domain features
     return [
-        total_power, # Sum of squared magnitudes of the FFT, representing the signal's energy in the frequency domain.
-        mean_freq, # Weighted average of frequencies, often referred to as the spectral centroid.
-        peak_freq, # Frequency with the highest magnitude (dominant frequency).
-        bandwidth, # Measure of the spread of the spectrum around the mean frequency.
-        spectral_entropy, # A measure of the signal's spectral complexity or randomness.
-        skewness, # Skewness of the FFT magnitudes, indicating asymmetry in the spectrum.
-        kurt, # Kurtosis of the FFT magnitudes, indicating how peaked the spectrum is.
-        band_power, # Total power within a specific frequency band (0–240 Hz in this case).
-        np.max(fft_magnitudes),  # aximum magnitude in the frequency spectrum.
-        np.sum(fft_magnitudes)   # Sum of all FFT magnitudes, representing the total spectral amplitude.
+        total_power, mean_freq, peak_freq, bandwidth, 
+        spectral_entropy, skewness, kurt, band_power, 
+        np.max(fft_magnitudes), np.sum(fft_magnitudes)
     ]
 
 st.set_page_config(layout="wide")
@@ -146,13 +124,13 @@ uploaded_file = st.sidebar.file_uploader("Upload a ZIP file containing CSV files
 if uploaded_file:
     with open("temp.zip", "wb") as f:
         f.write(uploaded_file.getbuffer())
-    csv_files, extract_dir = extract_zip("temp.zip")
+    csv_files, extract_dir, selected_zip_name = extract_zip("temp.zip")
     st.sidebar.success(f"Extracted {len(csv_files)} CSV files")
     df_sample = pd.read_csv(csv_files[0])
     columns = df_sample.columns.tolist()
     filter_column = st.sidebar.selectbox("Select column for filtering", columns)
     threshold = st.sidebar.number_input("Enter filtering threshold", value=0.0)
-    num_clusters = st.sidebar.slider("Select Number of Clusters", min_value=2, max_value=20, value=3)
+    
     if st.sidebar.button("Segment Beads"):
         with st.spinner("Segmenting beads..."):
             bead_segments = {}
@@ -171,13 +149,15 @@ if uploaded_file:
         bead_numbers = sorted(set(entry["bead_number"] for entry in st.session_state["metadata"]))
         selected_bead_number = st.sidebar.selectbox("Select Bead Number for Clustering", bead_numbers)
     
-    # Feature selection multi-select
     feature_names = [
         "Total Power", "Mean Frequency", "Peak Frequency", "Bandwidth", 
         "Spectral Entropy", "Skewness", "Kurtosis", "Band Power", 
         "Max Amplitude", "Sum of Amplitudes"
     ]
     selected_features = st.sidebar.multiselect("Select Features for Clustering", feature_names, default=feature_names)
+    
+    # Cluster adjustment comes AFTER feature selection
+    num_clusters = st.sidebar.slider("Select Number of Clusters", min_value=2, max_value=20, value=3)
     
     if st.sidebar.button("Run K-Means Clustering") and "metadata" in st.session_state:
         with st.spinner("Running K-Means Clustering..."):
@@ -189,7 +169,6 @@ if uploaded_file:
                     bead_segment = df.iloc[entry["start_index"]:entry["end_index"] + 1]
                     full_features = extract_advanced_features(bead_segment.iloc[:, 0].values)
                     
-                    # Map selected features to indices
                     feature_indices = [feature_names.index(f) for f in selected_features]
                     features = [full_features[i] for i in feature_indices]
                     
@@ -214,38 +193,32 @@ if uploaded_file:
             
             st.session_state["clustering_results"] = cluster_df
             
-            # Extract the annotation string from the file name
             cluster_df["Annotation"] = cluster_df["File Name"].apply(
                 lambda x: x.split("_")[-1].split(".csv")[0]
             )
             
-            # Calculate a suitable offset based on the PCA2 range
             pca2_range = cluster_df["PCA2"].max() - cluster_df["PCA2"].min()
-            offset = pca2_range * 0.05  # 5% of the PCA2 range as the vertical offset
+            offset = pca2_range * 0.05
             
-             # Create the scatter plot
             fig = px.scatter(
                 cluster_df,
                 x="PCA1",
                 y="PCA2",
                 color=cluster_df["Cluster"].astype(str),
                 hover_data=["File Name", "Bead Number", "Cluster"],
-                title=f"K-Means Clustering Visualization"
+                title=f"K-Means Clustering Visualization ({selected_zip_name})"
             )
-
             
-            # Add annotations for each point (text slightly above the dots)
             for i in range(len(cluster_df)):
                 fig.add_annotation(
                     x=cluster_df.loc[i, "PCA1"],
-                    y=cluster_df.loc[i, "PCA2"] + offset,  # Offset to place the text above the dot
+                    y=cluster_df.loc[i, "PCA2"] + offset,
                     text=cluster_df.loc[i, "Annotation"],
-                    showarrow=False,  # No arrow
+                    showarrow=False,
                     font=dict(size=10, color="black"),
                     align="center"
                 )
             
-            # Display the plot
             st.plotly_chart(fig)
             
 if "clustering_results" in st.session_state:
