@@ -209,12 +209,9 @@ if uploaded_file:
                 title=f"K-Means Clustering Visualization ({selected_zip_name})"
             )
             
-            # Get the current Plotly theme from the template
-            current_theme = px.templates["plotly"].layout
-            
-            # Set text color based on the background color in the current theme
-            background_color = current_theme.get("paper_bgcolor", "white")  # Default to white if no bgcolor is defined
-            text_color = "black" if background_color in ["white", "#ffffff"] else "white"  # Black for light theme, white for dark theme
+            # Check the background color from the figure's layout
+            background_color = fig.layout.paper_bgcolor or "white"  # Default to white if paper_bgcolor is not defined
+            text_color = "black" if background_color in ["white", "#ffffff"] else "white"  # Set text color based on theme
             
             # Add annotations with dynamic text color
             for i in range(len(cluster_df)):
