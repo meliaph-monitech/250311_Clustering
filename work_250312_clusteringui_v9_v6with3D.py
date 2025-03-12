@@ -50,17 +50,6 @@ def segment_beads(df, column, threshold):
     return list(zip(start_indices, end_indices))
 
 def extract_advanced_features(signal, sampling_rate=240):
-    """
-    Extracts frequency-domain features from the signal using FFT.
-    Assumes the signal is sampled at the given sampling rate.
-
-    Parameters:
-    - signal: 1D array-like signal data
-    - sampling_rate: Sampling frequency in Hz (default is 240 Hz)
-
-    Returns:
-    - A list of frequency-domain features
-    """
     if len(signal) == 0:
         return [0] * 10
     
@@ -80,22 +69,13 @@ def extract_advanced_features(signal, sampling_rate=240):
     skewness = skew(fft_magnitudes)  # Skewness of the spectrum
     kurt = kurtosis(fft_magnitudes)  # Kurtosis of the spectrum
     
-    # Select features in the 240 Hz band if needed (optional, based on requirements)
     band_mask = (freqs >= 0) & (freqs <= sampling_rate / 2)
     band_power = np.sum(fft_magnitudes[band_mask]**2)  # Power within the band
     
-    # Return frequency-domain features
     return [
-        total_power, # Sum of squared magnitudes of the FFT, representing the signal's energy in the frequency domain.
-        mean_freq, # Weighted average of frequencies, often referred to as the spectral centroid.
-        peak_freq, # Frequency with the highest magnitude (dominant frequency).
-        bandwidth, # Measure of the spread of the spectrum around the mean frequency.
-        spectral_entropy, # A measure of the signal's spectral complexity or randomness.
-        skewness, # Skewness of the FFT magnitudes, indicating asymmetry in the spectrum.
-        kurt, # Kurtosis of the FFT magnitudes, indicating how peaked the spectrum is.
-        band_power, # Total power within a specific frequency band (0–240 Hz in this case).
-        np.max(fft_magnitudes),  # aximum magnitude in the frequency spectrum.
-        np.sum(fft_magnitudes)   # Sum of all FFT magnitudes, representing the total spectral amplitude.
+        total_power, mean_freq, peak_freq, bandwidth, 
+        spectral_entropy, skewness, kurt, band_power, 
+        np.max(fft_magnitudes), np.sum(fft_magnitudes)
     ]
 
 st.set_page_config(layout="wide")
@@ -113,6 +93,7 @@ if uploaded_file:
     filter_column = st.sidebar.selectbox("Select column for filtering", columns)
     threshold = st.sidebar.number_input("Enter filtering threshold", value=0.0)
     num_clusters = st.sidebar.slider("Select Number of Clusters", min_value=2, max_value=20, value=3)
+    
     if st.sidebar.button("Segment Beads"):
         with st.spinner("Segmenting beads..."):
             bead_segments = {}
@@ -131,7 +112,6 @@ if uploaded_file:
         bead_numbers = sorted(set(entry["bead_number"] for entry in st.session_state["metadata"]))
         selected_bead_number = st.sidebar.selectbox("Select Bead Number for Clustering", bead_numbers)
     
-    # Feature selection multi-select
     feature_names = [
         "Total Power", "Mean Frequency", "Peak Frequency", "Bandwidth", 
         "Spectral Entropy", "Skewness", "Kurtosis", "Band Power", 
@@ -149,7 +129,6 @@ if uploaded_file:
                     bead_segment = df.iloc[entry["start_index"]:entry["end_index"] + 1]
                     full_features = extract_advanced_features(bead_segment.iloc[:, 0].values)
                     
-                    # Map selected features to indices
                     feature_indices = [feature_names.index(f) for f in selected_features]
                     features = [full_features[i] for i in feature_indices]
                     
@@ -159,13 +138,11 @@ if uploaded_file:
             scaler = RobustScaler()
             scaled_features = scaler.fit_transform(features_by_bead)
             
-            # Store scaled features in session state
             st.session_state["scaled_features"] = scaled_features
             
             kmeans = KMeans(n_clusters=num_clusters, random_state=42)
             clusters = kmeans.fit_predict(scaled_features)
             
-            # Store clusters in session state
             st.session_state["clusters"] = clusters
             st.session_state["file_names"] = file_names
             
@@ -181,16 +158,6 @@ if uploaded_file:
             
             st.session_state["clustering_results"] = cluster_df
             
-            # Extract the annotation string from the file name
-            cluster_df["Annotation"] = cluster_df["File Name"].apply(
-                lambda x: x.split("_")[-1].split(".csv")[0]
-            )
-            
-            # Calculate a suitable offset based on the PCA2 range
-            pca2_range = cluster_df["PCA2"].max() - cluster_df["PCA2"].min()
-            offset = pca2_range * 0.05  # 5% of the PCA2 range as the vertical offset
-            
-            # Create the scatter plot
             fig = px.scatter(
                 cluster_df,
                 x="PCA1",
@@ -199,39 +166,21 @@ if uploaded_file:
                 hover_data=["File Name", "Bead Number", "Cluster"],
                 title="K-Means Clustering Visualization (PCA Reduced)"
             )
-            
-            # Add annotations for each point (text slightly above the dots)
-            for i in range(len(cluster_df)):
-                fig.add_annotation(
-                    x=cluster_df.loc[i, "PCA1"],
-                    y=cluster_df.loc[i, "PCA2"] + offset,  # Offset to place the text above the dot
-                    text=cluster_df.loc[i, "Annotation"],
-                    showarrow=False,  # No arrow
-                    font=dict(size=10, color="black"),
-                    align="center"
-                )
-            
-            # Display the plot
+            st.session_state["fig_2d"] = fig
             st.plotly_chart(fig)
-            
-if "clustering_results" in st.session_state:
-    # Display the 2D PCA scatter plot
-    st.write("### 2D PCA Visualization")
-    st.plotly_chart(fig, key="2d_pca_plot")  # Add a unique key for the 2D plot
 
-    # Add a button to show 3D PCA visualization
+if "clustering_results" in st.session_state:
+    st.write("### 2D PCA Visualization")
+    st.plotly_chart(st.session_state["fig_2d"])
+
     if st.button("Show 3D PCA"):
-        # Ensure we have the required data in session state
         if "scaled_features" in st.session_state and "clusters" in st.session_state:
             scaled_features = st.session_state["scaled_features"]
             clusters = st.session_state["clusters"]
             file_names = st.session_state["file_names"]
 
-            # Reuse the scaled features and calculate 3D PCA
             pca_3d = PCA(n_components=3)
             reduced_features_3d = pca_3d.fit_transform(scaled_features)
-
-            # Create a DataFrame for the 3D PCA results
             cluster_df_3d = pd.DataFrame({
                 "PCA1": reduced_features_3d[:, 0],
                 "PCA2": reduced_features_3d[:, 1],
@@ -241,10 +190,8 @@ if "clustering_results" in st.session_state:
                 "Bead Number": [selected_bead_number] * len(file_names)
             })
 
-            # Create a 3D scatter plot
             fig_3d = go.Figure()
             unique_clusters = cluster_df_3d["Cluster"].unique()
-
             for cluster in unique_clusters:
                 cluster_data = cluster_df_3d[cluster_df_3d["Cluster"] == cluster]
                 fig_3d.add_trace(go.Scatter3d(
@@ -257,22 +204,15 @@ if "clustering_results" in st.session_state:
                     hovertext=cluster_data["File Name"]
                 ))
 
-            # Configure layout to adjust height and set rectangular prism aspect ratio
             fig_3d.update_layout(
                 title="3D PCA Visualization of K-Means Clusters",
                 scene=dict(
                     xaxis_title="PCA1",
                     yaxis_title="PCA2",
                     zaxis_title="PCA3",
-                    aspectmode="manual",  # Custom aspect ratio
-                    aspectratio=dict(x=2, y=1, z=0.5)  # Adjust ratios (rectangular prism)
+                    aspectmode="manual",
+                    aspectratio=dict(x=2, y=1, z=0.5)
                 ),
-                height=700,  # Adjust height of the figure
-                legend=dict(title="Clusters")
+                height=700
             )
-
-            # Display the 3D plot without hiding the 2D plot
-            st.write("### 3D PCA Visualization")
-            st.plotly_chart(fig_3d, key="3d_pca_plot")  # Add a unique key for the 3D plot
-        else:
-            st.error("Please run clustering first to generate 3D PCA visualization.")
+            st.plotly_chart(fig_3d)
