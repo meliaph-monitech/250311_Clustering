@@ -86,16 +86,16 @@ def extract_advanced_features(signal, sampling_rate=240):
     
     # Return frequency-domain features
     return [
-        total_power,
-        mean_freq,
-        peak_freq,
-        bandwidth,
-        spectral_entropy,
-        skewness,
-        kurt,
-        band_power,
-        np.max(fft_magnitudes),  # Maximum amplitude in the spectrum
-        np.sum(fft_magnitudes)   # Sum of amplitudes
+        total_power, # Sum of squared magnitudes of the FFT, representing the signal's energy in the frequency domain.
+        mean_freq, # Weighted average of frequencies, often referred to as the spectral centroid.
+        peak_freq, # Frequency with the highest magnitude (dominant frequency).
+        bandwidth, # Measure of the spread of the spectrum around the mean frequency.
+        spectral_entropy, # A measure of the signal's spectral complexity or randomness.
+        skewness, # Skewness of the FFT magnitudes, indicating asymmetry in the spectrum.
+        kurt, # Kurtosis of the FFT magnitudes, indicating how peaked the spectrum is.
+        band_power, # Total power within a specific frequency band (0–240 Hz in this case).
+        np.max(fft_magnitudes),  # aximum magnitude in the frequency spectrum.
+        np.sum(fft_magnitudes)   # Sum of all FFT magnitudes, representing the total spectral amplitude.
     ]
 
 st.set_page_config(layout="wide")
