@@ -37,8 +37,8 @@ def extract_zip(main_zip_path, extract_dir="extracted_zip_contents"):
         st.error("No ZIP files found inside the uploaded ZIP file.")
         st.stop()
 
-    # Create a mapping of file names to full paths
-    zip_file_names = [os.path.basename(f) for f in inner_zip_files]  # Extract only the file names
+    # Create a mapping of file names to full paths and sort alphabetically
+    zip_file_names = sorted([os.path.basename(f) for f in inner_zip_files])  # Extract only the file names and sort
 
     # Let the user select an inner ZIP file (only show the file names in the dropdown)
     selected_file_name = st.sidebar.selectbox("Select a ZIP file", zip_file_names)
