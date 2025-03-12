@@ -2,6 +2,7 @@ import streamlit as st
 import zipfile
 import os
 import pandas as pd
+import plotly.graph_objects as go
 import plotly.express as px
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
