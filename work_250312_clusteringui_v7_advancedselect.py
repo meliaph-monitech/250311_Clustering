@@ -132,7 +132,10 @@ def extract_advanced_features(signal, sampling_rate=240):
 st.set_page_config(layout="wide")
 st.title("Laser Welding K-Means Clustering V6 Global Analysis with Frequency-domain Features")
 
-uploaded_file = st.sidebar.file_uploader("Upload a ZIP file containing CSV files", type=["zip"])
+uploaded_file = st.sidebar.file_uploader("Upload a ZIP file containing multiple ZIP files", type=["zip"])
+
+if uploaded_file:
+    csv_files, extract_dir = extract_zip(uploaded_file)  # Pass the file object, not a string
 
 if uploaded_file:
     with open("temp.zip", "wb") as f:
