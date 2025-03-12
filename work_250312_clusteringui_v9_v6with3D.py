@@ -170,17 +170,22 @@ if uploaded_file:
             st.plotly_chart(fig)
 
 if "clustering_results" in st.session_state:
+    # Display the 2D PCA Visualization
     st.write("### 2D PCA Visualization")
-    st.plotly_chart(st.session_state["fig_2d"])
+    st.plotly_chart(st.session_state["fig_2d"], key="2d_pca_plot")  # Add a unique key for the 2D plot
 
+    # Add a button to show the 3D PCA visualization
     if st.button("Show 3D PCA"):
         if "scaled_features" in st.session_state and "clusters" in st.session_state:
             scaled_features = st.session_state["scaled_features"]
             clusters = st.session_state["clusters"]
             file_names = st.session_state["file_names"]
 
+            # Perform 3D PCA
             pca_3d = PCA(n_components=3)
             reduced_features_3d = pca_3d.fit_transform(scaled_features)
+
+            # Create a DataFrame for the 3D PCA results
             cluster_df_3d = pd.DataFrame({
                 "PCA1": reduced_features_3d[:, 0],
                 "PCA2": reduced_features_3d[:, 1],
@@ -190,6 +195,7 @@ if "clustering_results" in st.session_state:
                 "Bead Number": [selected_bead_number] * len(file_names)
             })
 
+            # Create a 3D scatter plot
             fig_3d = go.Figure()
             unique_clusters = cluster_df_3d["Cluster"].unique()
             for cluster in unique_clusters:
@@ -204,6 +210,7 @@ if "clustering_results" in st.session_state:
                     hovertext=cluster_data["File Name"]
                 ))
 
+            # Adjust layout for rectangular prism and height
             fig_3d.update_layout(
                 title="3D PCA Visualization of K-Means Clusters",
                 scene=dict(
@@ -211,8 +218,10 @@ if "clustering_results" in st.session_state:
                     yaxis_title="PCA2",
                     zaxis_title="PCA3",
                     aspectmode="manual",
-                    aspectratio=dict(x=2, y=1, z=0.5)
+                    aspectratio=dict(x=2, y=1, z=0.5)  # Rectangular prism aspect ratio
                 ),
-                height=700
+                height=700  # Adjust height of the 3D plot
             )
-            st.plotly_chart(fig_3d)
+
+            # Display the 3D plot
+            st.plotly_chart(fig_3d, key="3d_pca_plot")  # Add a unique key for the 3D plot
