@@ -9,58 +9,60 @@ from sklearn.preprocessing import RobustScaler
 from scipy.stats import skew, kurtosis
 from scipy.fft import fft, fftfreq
 import numpy as np
-import tkinter as tk
-from tkinter import filedialog
 
-def select_directory():
+def extract_zip(uploaded_zip):
     """
-    Open a dialog for the user to select a directory.
+    Extracts a main ZIP file containing multiple ZIP files,
+    lets the user select one, and extracts its contents.
     """
-    root = tk.Tk()
-    root.withdraw()  # Hide the main window
-    folder_path = filedialog.askdirectory()
-    return folder_path
-
-def extract_zip():
-    """
-    Allow user to select a directory and choose a ZIP file from a dropdown.
-    """
-    if st.sidebar.button("Select Folder"):
-        folder_path = select_directory()
-        st.session_state.folder_path = folder_path
-    
-    folder_path = st.session_state.get("folder_path", "")
-    st.sidebar.text(f"Selected: {folder_path}")
-    
-    zip_files = [f for f in os.listdir(folder_path) if f.endswith(".zip")] if os.path.exists(folder_path) else []
-    
-    if zip_files:
-        selected_zip = st.sidebar.selectbox("Select a ZIP file:", zip_files)
-        zip_path = os.path.join(folder_path, selected_zip)
-        
-        extract_dir = "extracted_csvs"
-        if os.path.exists(extract_dir):
-            for file in os.listdir(extract_dir):
-                os.remove(os.path.join(extract_dir, file))
-        else:
-            os.makedirs(extract_dir)
-        
-        try:
-            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                zip_ref.extractall(extract_dir)
-        except zipfile.BadZipFile:
-            st.error("The selected file is not a valid ZIP file.")
-            st.stop()
-
-        csv_files = [f for f in os.listdir(extract_dir) if f.endswith('.csv')]
-        if not csv_files:
-            st.error("No CSV files found in the ZIP file.")
-            st.stop()
-
-        return [os.path.join(extract_dir, f) for f in csv_files], extract_dir
+    main_extract_dir = "main_extracted_zip"
+    if os.path.exists(main_extract_dir):
+        for file in os.listdir(main_extract_dir):
+            os.remove(os.path.join(main_extract_dir, file))
     else:
-        st.sidebar.warning("No ZIP files found in the directory.")
-        return None, None
+        os.makedirs(main_extract_dir)
+    
+    # Save uploaded ZIP file and extract
+    with open("main.zip", "wb") as f:
+        f.write(uploaded_zip.getbuffer())
+    
+    try:
+        with zipfile.ZipFile("main.zip", 'r') as zip_ref:
+            zip_ref.extractall(main_extract_dir)
+    except zipfile.BadZipFile:
+        st.error("The uploaded file is not a valid ZIP file.")
+        st.stop()
+    
+    inner_zip_files = [f for f in os.listdir(main_extract_dir) if f.endswith('.zip')]
+    if not inner_zip_files:
+        st.error("No ZIP files found inside the uploaded ZIP.")
+        st.stop()
+    
+    selected_inner_zip = st.sidebar.selectbox("Select a ZIP file to extract:", inner_zip_files)
+    inner_zip_path = os.path.join(main_extract_dir, selected_inner_zip)
+    
+    extract_dir = "extracted_csvs"
+    if os.path.exists(extract_dir):
+        for file in os.listdir(extract_dir):
+            os.remove(os.path.join(extract_dir, file))
+    else:
+        os.makedirs(extract_dir)
+    
+    try:
+        with zipfile.ZipFile(inner_zip_path, 'r') as zip_ref:
+            zip_ref.extractall(extract_dir)
+    except zipfile.BadZipFile:
+        st.error("The selected ZIP file is not valid.")
+        st.stop()
+    
+    csv_files = [f for f in os.listdir(extract_dir) if f.endswith('.csv')]
+    if not csv_files:
+        st.error("No CSV files found in the extracted ZIP file.")
+        st.stop()
+    
+    return [os.path.join(extract_dir, f) for f in csv_files], extract_dir
+
+
 def segment_beads(df, column, threshold):
     start_indices = []
     end_indices = []
