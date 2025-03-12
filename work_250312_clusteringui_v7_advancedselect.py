@@ -135,7 +135,13 @@ st.title("Laser Welding K-Means Clustering V6 Global Analysis with Frequency-dom
 uploaded_file = st.sidebar.file_uploader("Upload a ZIP file containing multiple ZIP files", type=["zip"])
 
 if uploaded_file:
-    csv_files, extract_dir = extract_zip(uploaded_file)  # Pass the file object, not a string
+    zip_path = "uploaded.zip"  # Define a fixed filename
+    with open(zip_path, "wb") as f:
+        f.write(uploaded_file.getbuffer())  # Save uploaded file as 'uploaded.zip'
+
+    csv_files, extract_dir = extract_zip(zip_path)  # Now pass the file path
+
+    st.sidebar.success(f"Extracted {len(csv_files)} CSV files")
 
 if uploaded_file:
     with open("temp.zip", "wb") as f:
