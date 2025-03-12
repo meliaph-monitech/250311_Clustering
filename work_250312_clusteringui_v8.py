@@ -209,9 +209,9 @@ if uploaded_file:
                 title=f"K-Means Clustering Visualization ({selected_zip_name})"
             )
             
-            # Check the background color from the figure's layout
-            background_color = fig.layout.paper_bgcolor or "white"  # Default to white if paper_bgcolor is not defined
-            text_color = "black" if background_color in ["white", "#ffffff"] else "white"  # Set text color based on theme
+            # Detect Streamlit theme (light or dark)
+            streamlit_theme = st.get_option("theme.base")
+            text_color = "black" if streamlit_theme == "light" else "white"  # Set text color based on Streamlit theme
             
             # Add annotations with dynamic text color
             for i in range(len(cluster_df)):
