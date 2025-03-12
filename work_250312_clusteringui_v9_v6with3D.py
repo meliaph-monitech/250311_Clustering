@@ -188,7 +188,6 @@ if uploaded_file:
 
 if "clustering_results" in st.session_state:
     st.write("### 2D PCA Visualization")
-    st.plotly_chart(st.session_state["fig_2d"], key="2d_chart_duplicate")
     if st.button("Show 3D PCA"):
         scaled_features = st.session_state["scaled_features"]
         clusters = st.session_state["clusters"]
