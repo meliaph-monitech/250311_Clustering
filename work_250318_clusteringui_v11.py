@@ -49,6 +49,14 @@ def segment_beads(df, column, threshold):
             i += 1
     return list(zip(start_indices, end_indices))
 
+def normalize_signal(signal):
+    """Normalize a signal using its mean and standard deviation."""
+    mean = np.mean(signal)
+    std = np.std(signal)
+    if std == 0:  # Avoid division by zero
+        return signal - mean  # Subtract the mean if the signal has no variance
+    return (signal - mean) / std
+
 def extract_advanced_features(signal, sampling_rate=240):
     if len(signal) == 0:
         return [0] * 10
@@ -127,7 +135,12 @@ if uploaded_file:
                 if entry["bead_number"] == selected_bead_number:
                     df = pd.read_csv(entry["file"])
                     bead_segment = df.iloc[entry["start_index"]:entry["end_index"] + 1]
-                    full_features = extract_advanced_features(bead_segment.iloc[:, 0].values)
+                    
+                    # **Normalize the data for this bead segment**
+                    normalized_signal = normalize_signal(bead_segment.iloc[:, 0].values)
+                    
+                    # Extract features from the normalized signal
+                    full_features = extract_advanced_features(normalized_signal)
                     
                     feature_indices = [feature_names.index(f) for f in selected_features]
                     features = [full_features[i] for i in feature_indices]
@@ -135,6 +148,7 @@ if uploaded_file:
                     features_by_bead.append(features)
                     file_names.append(entry["file"])
             
+            # Scale features across all beads as usual
             scaler = RobustScaler()
             scaled_features = scaler.fit_transform(features_by_bead)
             
@@ -146,7 +160,7 @@ if uploaded_file:
             st.session_state["clusters"] = clusters
             st.session_state["file_names"] = file_names
             
-            # 2D PCA
+            # PCA and visualization logic remains unchanged
             pca_2d = PCA(n_components=2)
             reduced_features_2d = pca_2d.fit_transform(scaled_features)
             cluster_df_2d = pd.DataFrame({
@@ -206,7 +220,7 @@ if uploaded_file:
                     marker=dict(size=6),
                     name=f"Cluster {cluster}"
                 ))
-
+    
             fig_3d.update_layout(
                 title="3D PCA Visualization",
                 scene=dict(
