@@ -61,6 +61,9 @@ def extract_advanced_features(signal, sampling_rate=240):
     if len(signal) == 0:
         return [0] * 10
     
+    # **Normalize the signal before feature extraction**
+    signal = normalize_signal(signal)
+    
     # Perform FFT
     N = len(signal)
     fft_values = fft(signal)
