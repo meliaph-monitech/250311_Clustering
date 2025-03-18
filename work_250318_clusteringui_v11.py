@@ -49,20 +49,22 @@ def segment_beads(df, column, threshold):
             i += 1
     return list(zip(start_indices, end_indices))
 
-def normalize_signal(signal):
-    """Normalize a signal using its mean and standard deviation."""
-    mean = np.mean(signal)
-    std = np.std(signal)
-    if std == 0:  # Avoid division by zero
-        return signal - mean  # Subtract the mean if the signal has no variance
-    return (signal - mean) / std
+def normalize_signal_with_scaler(signal):
+    """
+    Normalize a signal using RobustScaler.
+    The signal is reshaped to a 2D array for compatibility with RobustScaler.
+    """
+    scaler = RobustScaler()
+    signal_reshaped = signal.reshape(-1, 1)  # Reshape to 2D for RobustScaler
+    normalized_signal = scaler.fit_transform(signal_reshaped).flatten()  # Normalize and flatten back to 1D
+    return normalized_signal
 
 def extract_advanced_features(signal, sampling_rate=240):
     if len(signal) == 0:
         return [0] * 10
     
-    # **Normalize the signal before feature extraction**
-    signal = normalize_signal(signal)
+    # **Normalize the signal using RobustScaler before feature extraction**
+    signal = normalize_signal_with_scaler(signal)
     
     # Perform FFT
     N = len(signal)
@@ -139,8 +141,8 @@ if uploaded_file:
                     df = pd.read_csv(entry["file"])
                     bead_segment = df.iloc[entry["start_index"]:entry["end_index"] + 1]
                     
-                    # **Normalize the data for this bead segment**
-                    normalized_signal = normalize_signal(bead_segment.iloc[:, 0].values)
+                    # **Normalize the data for this bead segment using RobustScaler**
+                    normalized_signal = normalize_signal_with_scaler(bead_segment.iloc[:, 0].values)
                     
                     # Extract features from the normalized signal
                     full_features = extract_advanced_features(normalized_signal)
