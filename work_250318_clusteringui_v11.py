@@ -92,7 +92,7 @@ def extract_advanced_features(signal, sampling_rate=240):
     ]
 
 st.set_page_config(layout="wide")
-st.title("Laser Welding K-Means Clustering V6 Global Analysis with Frequency-domain Features")
+st.title("Laser Welding K-Means Clustering V11 Normalized + Frequency-domain Features")
 
 uploaded_file = st.sidebar.file_uploader("Upload a ZIP file containing CSV files", type=["zip"])
 
