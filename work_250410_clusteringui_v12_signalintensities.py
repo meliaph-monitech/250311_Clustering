@@ -66,7 +66,7 @@ if uploaded_file:
     nperseg = st.sidebar.number_input("Spectrogram Window Size (nperseg)", min_value=256, max_value=4096, value=1024)
     overlap_ratio = st.sidebar.number_input("Overlap Ratio", min_value=0.0, max_value=1.0, value=0.5)
     db_scale = st.sidebar.number_input("dB Scale", min_value=50, max_value=150, value=110)
-    selected_frequencies = st.sidebar.text_area("Enter Frequencies (Hz, comma-separated)", "240, 500").split(",")
+    selected_frequencies = st.sidebar.text_area("Enter Frequencies (Hz, comma-separated)", "200, 400").split(",")
     
     try:
         selected_frequencies = [float(freq.strip()) for freq in selected_frequencies if freq.strip()]
