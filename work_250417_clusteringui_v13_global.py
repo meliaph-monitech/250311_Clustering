@@ -85,7 +85,7 @@ def extract_advanced_features(signal, sampling_rate=240):
     ]
 
 st.set_page_config(layout="wide")
-st.title("Global K-Means Clustering by Bead Number (With Feature Extraction)")
+st.title("Global K-Means Clustering Across Selected Bead Numbers")
 
 uploaded_file = st.sidebar.file_uploader("Upload a ZIP file containing CSV files", type=["zip"])
 
@@ -116,7 +116,7 @@ if uploaded_file:
     
     if "metadata" in st.session_state:
         bead_numbers = sorted(set(entry["bead_number"] for entry in st.session_state["metadata"]))
-        selected_bead_number = st.sidebar.selectbox("Select Bead Number for Clustering", bead_numbers)
+        selected_bead_numbers = st.sidebar.multiselect("Select Bead Numbers for Clustering", bead_numbers)
     
     feature_names = [
         "Total Power", "Mean Frequency", "Peak Frequency", "Bandwidth", 
@@ -128,8 +128,10 @@ if uploaded_file:
     if st.sidebar.button("Run K-Means Clustering") and "metadata" in st.session_state:
         with st.spinner("Running K-Means Clustering..."):
             features_global = []
+            file_bead_info = []  # Store file and bead info for annotation
+            
             for entry in st.session_state["metadata"]:
-                if entry["bead_number"] == selected_bead_number:
+                if entry["bead_number"] in selected_bead_numbers:
                     df = pd.read_csv(entry["file"])
                     bead_segment = df.iloc[entry["start_index"]:entry["end_index"] + 1]
                     
@@ -141,6 +143,10 @@ if uploaded_file:
                     features = [full_features[i] for i in feature_indices]
                     
                     features_global.append(features)
+                    file_bead_info.append({
+                        "file_name": entry["file"],
+                        "bead_number": entry["bead_number"]
+                    })
             
             scaler = RobustScaler()
             scaled_features = scaler.fit_transform(features_global)
@@ -153,16 +159,34 @@ if uploaded_file:
             cluster_df_2d = pd.DataFrame({
                 "PCA1": reduced_features_2d[:, 0],
                 "PCA2": reduced_features_2d[:, 1],
-                "Cluster": clusters
+                "Cluster": clusters,
+                "File Name": [info["file_name"] for info in file_bead_info],
+                "Bead Number": [info["bead_number"] for info in file_bead_info]
             })
+            
+            cluster_df_2d["Annotation"] = cluster_df_2d["File Name"].apply(
+                lambda x: x.split("_")[-1].split(".csv")[0]
+            )
+            pca2_range = cluster_df_2d["PCA2"].max() - cluster_df_2d["PCA2"].min()
+            offset = pca2_range * 0.05  # Adjust annotation position
             
             fig_2d = px.scatter(
                 cluster_df_2d,
                 x="PCA1",
                 y="PCA2",
                 color=cluster_df_2d["Cluster"].astype(str),
-                title="2D PCA Visualization (K-Means Clustering)"
+                hover_data=["File Name", "Bead Number", "Cluster"],
+                title="2D PCA Visualization (Global K-Means Clustering)"
             )
+            
+            for i in range(len(cluster_df_2d)):
+                fig_2d.add_annotation(
+                    x=cluster_df_2d.loc[i, "PCA1"],
+                    y=cluster_df_2d.loc[i, "PCA2"] + offset,
+                    text=cluster_df_2d.loc[i, "Annotation"],
+                    showarrow=False,
+                    font=dict(size=10, color="black")
+                )
             
             st.write("### 2D PCA Visualization")
             st.plotly_chart(fig_2d, key="2d_chart")
