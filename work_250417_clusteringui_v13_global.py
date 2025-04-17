@@ -50,40 +50,33 @@ def segment_beads(df, column, threshold):
     return list(zip(start_indices, end_indices))
 
 def normalize_signal_with_scaler(signal):
-    """
-    Normalize a signal using RobustScaler.
-    The signal is reshaped to a 2D array for compatibility with RobustScaler.
-    """
     scaler = RobustScaler()
-    signal_reshaped = signal.reshape(-1, 1)  # Reshape to 2D for RobustScaler
-    normalized_signal = scaler.fit_transform(signal_reshaped).flatten()  # Normalize and flatten back to 1D
+    signal_reshaped = signal.reshape(-1, 1)
+    normalized_signal = scaler.fit_transform(signal_reshaped).flatten()
     return normalized_signal
 
 def extract_advanced_features(signal, sampling_rate=240):
     if len(signal) == 0:
         return [0] * 10
     
-    # **Normalize the signal using RobustScaler before feature extraction**
     signal = normalize_signal_with_scaler(signal)
     
-    # Perform FFT
     N = len(signal)
     fft_values = fft(signal)
-    fft_magnitudes = np.abs(fft_values[:N // 2])  # Take magnitudes of positive frequencies
-    freqs = fftfreq(N, 1 / sampling_rate)[:N // 2]  # Positive frequency components
+    fft_magnitudes = np.abs(fft_values[:N // 2])
+    freqs = fftfreq(N, 1 / sampling_rate)[:N // 2]
     
-    # Frequency-domain features
-    total_power = np.sum(fft_magnitudes**2)  # Total power of the spectrum
-    mean_freq = np.sum(freqs * fft_magnitudes) / np.sum(fft_magnitudes)  # Mean frequency (centroid)
-    peak_freq = freqs[np.argmax(fft_magnitudes)]  # Frequency with maximum amplitude
-    bandwidth = np.sqrt(np.sum((freqs - mean_freq)**2 * fft_magnitudes) / np.sum(fft_magnitudes))  # Spectral bandwidth
+    total_power = np.sum(fft_magnitudes**2)
+    mean_freq = np.sum(freqs * fft_magnitudes) / np.sum(fft_magnitudes)
+    peak_freq = freqs[np.argmax(fft_magnitudes)]
+    bandwidth = np.sqrt(np.sum((freqs - mean_freq)**2 * fft_magnitudes) / np.sum(fft_magnitudes))
     spectral_entropy = -np.sum((fft_magnitudes / np.sum(fft_magnitudes)) * 
-                               np.log2(fft_magnitudes / np.sum(fft_magnitudes) + 1e-12))  # Spectral entropy
-    skewness = skew(fft_magnitudes)  # Skewness of the spectrum
-    kurt = kurtosis(fft_magnitudes)  # Kurtosis of the spectrum
+                               np.log2(fft_magnitudes / np.sum(fft_magnitudes) + 1e-12))
+    skewness = skew(fft_magnitudes)
+    kurt = kurtosis(fft_magnitudes)
     
     band_mask = (freqs >= 0) & (freqs <= sampling_rate / 2)
-    band_power = np.sum(fft_magnitudes[band_mask]**2)  # Power within the band
+    band_power = np.sum(fft_magnitudes[band_mask]**2)
     
     return [
         total_power, mean_freq, peak_freq, bandwidth, 
@@ -92,7 +85,7 @@ def extract_advanced_features(signal, sampling_rate=240):
     ]
 
 st.set_page_config(layout="wide")
-st.title("Laser Welding K-Means Clustering V11 Normalized + Frequency-domain Features")
+st.title("Global K-Means Clustering by Bead Number (With Feature Extraction)")
 
 uploaded_file = st.sidebar.file_uploader("Upload a ZIP file containing CSV files", type=["zip"])
 
@@ -134,113 +127,42 @@ if uploaded_file:
     
     if st.sidebar.button("Run K-Means Clustering") and "metadata" in st.session_state:
         with st.spinner("Running K-Means Clustering..."):
-            features_by_bead = []
-            file_names = []
+            features_global = []
             for entry in st.session_state["metadata"]:
                 if entry["bead_number"] == selected_bead_number:
                     df = pd.read_csv(entry["file"])
                     bead_segment = df.iloc[entry["start_index"]:entry["end_index"] + 1]
                     
-                    # **Normalize the data for this bead segment using RobustScaler**
                     normalized_signal = normalize_signal_with_scaler(bead_segment.iloc[:, 0].values)
                     
-                    # Extract features from the normalized signal
                     full_features = extract_advanced_features(normalized_signal)
                     
                     feature_indices = [feature_names.index(f) for f in selected_features]
                     features = [full_features[i] for i in feature_indices]
                     
-                    features_by_bead.append(features)
-                    file_names.append(entry["file"])
+                    features_global.append(features)
             
-            # Scale features across all beads as usual
             scaler = RobustScaler()
-            scaled_features = scaler.fit_transform(features_by_bead)
-            
-            st.session_state["scaled_features"] = scaled_features
+            scaled_features = scaler.fit_transform(features_global)
             
             kmeans = KMeans(n_clusters=num_clusters, random_state=42)
             clusters = kmeans.fit_predict(scaled_features)
             
-            st.session_state["clusters"] = clusters
-            st.session_state["file_names"] = file_names
-            
-            # PCA and visualization logic remains unchanged
             pca_2d = PCA(n_components=2)
             reduced_features_2d = pca_2d.fit_transform(scaled_features)
             cluster_df_2d = pd.DataFrame({
                 "PCA1": reduced_features_2d[:, 0],
                 "PCA2": reduced_features_2d[:, 1],
-                "Cluster": clusters,
-                "File Name": file_names,
-                "Bead Number": [selected_bead_number] * len(file_names)
+                "Cluster": clusters
             })
-            
-            cluster_df_2d["Annotation"] = cluster_df_2d["File Name"].apply(
-                lambda x: x.split("_")[-1].split(".csv")[0]
-            )
-            pca2_range = cluster_df_2d["PCA2"].max() - cluster_df_2d["PCA2"].min()
-            offset = pca2_range * 0.05  # Adjust annotation position
             
             fig_2d = px.scatter(
                 cluster_df_2d,
                 x="PCA1",
                 y="PCA2",
                 color=cluster_df_2d["Cluster"].astype(str),
-                hover_data=["File Name", "Bead Number", "Cluster"],
                 title="2D PCA Visualization (K-Means Clustering)"
             )
             
-            for i in range(len(cluster_df_2d)):
-                fig_2d.add_annotation(
-                    x=cluster_df_2d.loc[i, "PCA1"],
-                    y=cluster_df_2d.loc[i, "PCA2"] + offset,
-                    text=cluster_df_2d.loc[i, "Annotation"],
-                    showarrow=False,
-                    font=dict(size=10, color="black")
-                )
-            
-            st.session_state["fig_2d"] = fig_2d
-            
-            # 3D PCA
-            pca_3d = PCA(n_components=3)
-            reduced_features_3d = pca_3d.fit_transform(scaled_features)
-            cluster_df_3d = pd.DataFrame({
-                "PCA1": reduced_features_3d[:, 0],
-                "PCA2": reduced_features_3d[:, 1],
-                "PCA3": reduced_features_3d[:, 2],
-                "Cluster": clusters,
-                "File Name": file_names
-            })
-            
-            fig_3d = go.Figure()
-            unique_clusters = cluster_df_3d["Cluster"].unique()
-            for cluster in unique_clusters:
-                cluster_data = cluster_df_3d[cluster_df_3d["Cluster"] == cluster]
-                fig_3d.add_trace(go.Scatter3d(
-                    x=cluster_data["PCA1"],
-                    y=cluster_data["PCA2"],
-                    z=cluster_data["PCA3"],
-                    mode="markers",
-                    marker=dict(size=6),
-                    name=f"Cluster {cluster}"
-                ))
-    
-            fig_3d.update_layout(
-                title="3D PCA Visualization",
-                scene=dict(
-                    xaxis_title="PCA1",
-                    yaxis_title="PCA2",
-                    zaxis_title="PCA3",
-                    aspectmode="manual",
-                    aspectratio=dict(x=2, y=1, z=0.5)
-                ),
-                height=700
-            )
-            
-            # Display both 2D and 3D figures
             st.write("### 2D PCA Visualization")
             st.plotly_chart(fig_2d, key="2d_chart")
-            
-            st.write("### 3D PCA Visualization")
-            st.plotly_chart(fig_3d, key="3d_chart")
