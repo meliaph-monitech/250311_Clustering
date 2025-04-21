@@ -173,8 +173,10 @@ if "results" in st.session_state:
                 hoverinfo="text",
                 text=f"File: {files[i]}<br>Cluster: {label}"
             ))
+        # Add fmin and fmax to title if in frequency-related modes
+        freq_info = f" | Freq: {fmin}–{fmax} Hz" if clustering_mode in ["Frequency Domain", "Spectrogram Features"] else ""
         fig.update_layout(
-            title=f"Bead {bead_num} - Clustered ({clustering_mode})",
+            title=f"Bead {bead_num} - Clustered ({clustering_mode}){freq_info}",
             xaxis_title="Time Index" if clustering_mode == "Time Domain" else "Time Frame",
             yaxis_title="Signal" if clustering_mode == "Time Domain" else "Intensity (dB)",
             showlegend=True
