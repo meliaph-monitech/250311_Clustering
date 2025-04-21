@@ -7,6 +7,7 @@ import plotly.graph_objects as go
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import RobustScaler
 from scipy.signal import spectrogram
+from scipy.ndimage import zoom
 
 # === Setup and Helper Functions ===
 
@@ -37,19 +38,25 @@ def segment_beads(df, column, threshold):
         i += 1
     return list(zip(starts, ends))
 
-def compute_spectrogram_intensity(signal, fs, fmin, fmax, nperseg, noverlap, nfft):
+def compute_spectrogram_features(signal, fs, fmin, fmax, nperseg, noverlap, nfft, output_shape=(40, 40)):
     f, t, Sxx = spectrogram(signal, fs=fs, nperseg=nperseg, noverlap=noverlap, nfft=nfft)
     Sxx_dB = 20 * np.log10(np.abs(Sxx) + np.finfo(float).eps)
+
+    # Crop frequencies
     band_indices = np.where((f >= fmin) & (f <= fmax))[0]
-    if len(band_indices) == 0:
-        return np.zeros_like(t)
-    return np.mean(Sxx_dB[band_indices, :], axis=0)
+    Sxx_dB = Sxx_dB[band_indices, :]
+    
+    # Resize to fixed shape (e.g., 40x40)
+    Sxx_resized = zoom(Sxx_dB, (output_shape[0] / Sxx_dB.shape[0], output_shape[1] / Sxx_dB.shape[1]))
+
+    # Flatten to 1D vector
+    return Sxx_resized.flatten()
 
 # === Sidebar Controls ===
 
 with st.sidebar:
     uploaded_file = st.file_uploader("Upload ZIP of CSVs", type=["zip"])
-    clustering_mode = st.radio("Clustering Mode", ["Time Domain", "Frequency Domain"])
+    clustering_mode = st.radio("Clustering Mode", ["Time Domain", "Frequency Domain", "Spectrogram Features"])
 
     if uploaded_file:
         with open("temp.zip", "wb") as f:
@@ -62,7 +69,7 @@ with st.sidebar:
         filter_column = st.selectbox("Select filter column", columns)
         threshold = st.number_input("Bead detection threshold", value=0.0)
 
-        if clustering_mode == "Frequency Domain":
+        if clustering_mode in ["Frequency Domain", "Spectrogram Features"]:
             fs = st.number_input("Sampling frequency (Hz)", min_value=1000, value=10000)
             fmin = st.number_input("Min frequency (Hz)", min_value=1, value=100)
             fmax = st.number_input("Max frequency (Hz)", min_value=1, value=500)
@@ -122,10 +129,14 @@ with st.sidebar:
                         norm = scaler.fit_transform(signal.reshape(-1, 1)).flatten()
                         features.append(norm[:1000] if len(norm) > 1000 else np.pad(norm, (0, 1000 - len(norm))))
                         signals_for_plot.append(norm)
-                    else:
-                        intensity = compute_spectrogram_intensity(signal, fs, fmin, fmax, nperseg, noverlap, nfft)
+                    elif clustering_mode == "Frequency Domain":
+                        intensity = compute_spectrogram_features(signal, fs, fmin, fmax, nperseg, noverlap, nfft)
                         features.append(intensity[:1000] if len(intensity) > 1000 else np.pad(intensity, (0, 1000 - len(intensity))))
                         signals_for_plot.append(intensity)
+                    else:  # Spectrogram Features
+                        feature = compute_spectrogram_features(signal, fs, fmin, fmax, nperseg, noverlap, nfft)
+                        features.append(feature)
+                        signals_for_plot.append(feature)
 
                 kmeans = KMeans(n_clusters=num_clusters, n_init=10, random_state=42)
                 labels = kmeans.fit_predict(features)
