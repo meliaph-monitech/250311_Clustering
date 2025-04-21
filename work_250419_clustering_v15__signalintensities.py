@@ -64,10 +64,10 @@ with st.sidebar:
 
         if clustering_mode == "Frequency Domain":
             fs = st.number_input("Sampling frequency (Hz)", min_value=1000, value=10000)
-            fmin = st.number_input("Min frequency (Hz)", min_value=1, value=15000)
-            fmax = st.number_input("Max frequency (Hz)", min_value=1, value=20000)
+            fmin = st.number_input("Min frequency (Hz)", min_value=1, value=100)
+            fmax = st.number_input("Max frequency (Hz)", min_value=1, value=500)
             nperseg = st.number_input("nperseg", min_value=128, max_value=8192, value=1024)
-            noverlap_ratio = st.slider("Overlap ratio", 0.0, 0.99, value=0.9)
+            noverlap_ratio = st.slider("Overlap ratio", 0.0, 0.99, value=0.99)
             noverlap = int(nperseg * noverlap_ratio)
             nfft = st.number_input("nfft", min_value=256, value=2048)
 
