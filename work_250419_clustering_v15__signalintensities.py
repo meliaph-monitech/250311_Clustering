@@ -92,8 +92,8 @@ with st.sidebar:
         num_clusters = st.slider("Number of Clusters", 2, 10, 4)
 
         if clustering_mode == "Frequency Domain":
-            fmin = st.number_input("Min Frequency (Hz)", value=1000)
-            fmax = st.number_input("Max Frequency (Hz)", value=1000)
+            fmin = st.number_input("Min Frequency (Hz)", value=100)
+            fmax = st.number_input("Max Frequency (Hz)", value=500)
             fs = st.number_input("Sampling Rate (Hz)", value=44100)
             nperseg = st.number_input("nperseg", value=256)
             noverlap = st.number_input("noverlap", value=128)
