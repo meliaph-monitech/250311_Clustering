@@ -188,8 +188,9 @@ if uploaded_file:
             #         font=dict(size=10, color="black")
             #     )
 
-            cluster_df_2d["Annotation"] = cluster_df_2d["File Name"].apply(
-                lambda x: x.split("_")[2] + " - Bead Number" if len(x.split("_")) > 2 else "Invalid File Name"
+            cluster_df_2d["Annotation"] = cluster_df_2d.apply(
+                lambda row: row["File Name"].split("_")[2] + f" - {row['Bead Number']}" if len(row["File Name"].split("_")) > 2 else "Invalid File Name",
+                axis=1
             )
             
             pca2_range = cluster_df_2d["PCA2"].max() - cluster_df_2d["PCA2"].min()
