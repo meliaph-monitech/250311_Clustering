@@ -164,9 +164,34 @@ if uploaded_file:
                 "Bead Number": [info["bead_number"] for info in file_bead_info]
             })
             
+            # cluster_df_2d["Annotation"] = cluster_df_2d["File Name"].apply(
+            #     lambda x: x.split("_")[-1].split(".csv")[0]
+            # )
+            # pca2_range = cluster_df_2d["PCA2"].max() - cluster_df_2d["PCA2"].min()
+            # offset = pca2_range * 0.05  # Adjust annotation position
+            
+            # fig_2d = px.scatter(
+            #     cluster_df_2d,
+            #     x="PCA1",
+            #     y="PCA2",
+            #     color=cluster_df_2d["Cluster"].astype(str),
+            #     hover_data=["File Name", "Bead Number", "Cluster"],
+            #     title="2D PCA Visualization (Global K-Means Clustering)"
+            # )
+            
+            # for i in range(len(cluster_df_2d)):
+            #     fig_2d.add_annotation(
+            #         x=cluster_df_2d.loc[i, "PCA1"],
+            #         y=cluster_df_2d.loc[i, "PCA2"] + offset,
+            #         text=cluster_df_2d.loc[i, "Annotation"],
+            #         showarrow=False,
+            #         font=dict(size=10, color="black")
+            #     )
+
             cluster_df_2d["Annotation"] = cluster_df_2d["File Name"].apply(
-                lambda x: x.split("_")[-1].split(".csv")[0]
+                lambda x: x.split("_")[2] + " - Bead Number" if len(x.split("_")) > 2 else "Invalid File Name"
             )
+            
             pca2_range = cluster_df_2d["PCA2"].max() - cluster_df_2d["PCA2"].min()
             offset = pca2_range * 0.05  # Adjust annotation position
             
