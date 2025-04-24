@@ -100,13 +100,21 @@ st.title("Global K-Means Clustering Across Selected Bead Numbers")
 
 uploaded_file = st.sidebar.file_uploader("Upload a ZIP file containing CSV files", type=["zip"])
 
+# Allow the user to choose which column to use for analysis
 if uploaded_file:
     with open("temp.zip", "wb") as f:
         f.write(uploaded_file.getbuffer())
     csv_files, extract_dir = extract_zip("temp.zip")
     st.sidebar.success(f"Extracted {len(csv_files)} CSV files")
+    
+    # Read the first CSV file to get column names
     df_sample = pd.read_csv(csv_files[0])
     columns = df_sample.columns.tolist()
+    
+    # Sidebar option to select the column to use for signal analysis
+    analysis_column = st.sidebar.selectbox("Select column for signal analysis", columns)
+    
+    # Sidebar option to select column for filtering
     filter_column = st.sidebar.selectbox("Select column for filtering", columns)
     threshold = st.sidebar.number_input("Enter filtering threshold", value=0.0)
     num_clusters = st.sidebar.slider("Select Number of Clusters", min_value=2, max_value=20, value=3)
@@ -129,15 +137,12 @@ if uploaded_file:
         bead_numbers = sorted(set(entry["bead_number"] for entry in st.session_state["metadata"]))
         selected_bead_numbers = st.sidebar.multiselect("Select Bead Numbers for Clustering", bead_numbers)
     
-    # Update feature names to include basic statistical features
     feature_names = [
         "Mean", "Median", "Max", "Min", "Standard Deviation", "Variance", "Mean Z-Score",
         "Total Power", "Mean Frequency", "Peak Frequency", "Bandwidth", 
         "Spectral Entropy", "Skewness", "Kurtosis", "Band Power", 
         "Max Amplitude", "Sum of Amplitudes"
     ]
-    
-    # Sidebar: Update "Select Features for Clustering" to include new features
     selected_features = st.sidebar.multiselect("Select Features for Clustering", feature_names, default=feature_names)
     
     if st.sidebar.button("Run K-Means Clustering") and "metadata" in st.session_state:
@@ -150,7 +155,10 @@ if uploaded_file:
                     df = pd.read_csv(entry["file"])
                     bead_segment = df.iloc[entry["start_index"]:entry["end_index"] + 1]
                     
-                    normalized_signal = normalize_signal_with_scaler(bead_segment.iloc[:, 0].values)
+                    # Use the selected column for analysis
+                    signal = bead_segment[analysis_column].values
+                    
+                    normalized_signal = normalize_signal_with_scaler(signal)
                     
                     full_features = extract_advanced_features(normalized_signal)
                     
@@ -179,30 +187,6 @@ if uploaded_file:
                 "Bead Number": [info["bead_number"] for info in file_bead_info]
             })
             
-            # cluster_df_2d["Annotation"] = cluster_df_2d["File Name"].apply(
-            #     lambda x: x.split("_")[-1].split(".csv")[0]
-            # )
-            # pca2_range = cluster_df_2d["PCA2"].max() - cluster_df_2d["PCA2"].min()
-            # offset = pca2_range * 0.05  # Adjust annotation position
-            
-            # fig_2d = px.scatter(
-            #     cluster_df_2d,
-            #     x="PCA1",
-            #     y="PCA2",
-            #     color=cluster_df_2d["Cluster"].astype(str),
-            #     hover_data=["File Name", "Bead Number", "Cluster"],
-            #     title="2D PCA Visualization (Global K-Means Clustering)"
-            # )
-            
-            # for i in range(len(cluster_df_2d)):
-            #     fig_2d.add_annotation(
-            #         x=cluster_df_2d.loc[i, "PCA1"],
-            #         y=cluster_df_2d.loc[i, "PCA2"] + offset,
-            #         text=cluster_df_2d.loc[i, "Annotation"],
-            #         showarrow=False,
-            #         font=dict(size=10, color="black")
-            #     )
-
             cluster_df_2d["Annotation"] = cluster_df_2d.apply(
                 lambda row: row["File Name"].split("_")[2] + f" - {row['Bead Number']}" if len(row["File Name"].split("_")) > 2 else "Invalid File Name",
                 axis=1
