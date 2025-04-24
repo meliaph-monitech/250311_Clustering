@@ -57,10 +57,21 @@ def normalize_signal_with_scaler(signal):
 
 def extract_advanced_features(signal, sampling_rate=240):
     if len(signal) == 0:
-        return [0] * 10
+        return [0] * 17  # Updated to accommodate new features
     
     signal = normalize_signal_with_scaler(signal)
     
+    # Basic Statistical Features
+    mean_value = np.mean(signal)
+    median_value = np.median(signal)
+    max_value = np.max(signal)
+    min_value = np.min(signal)
+    std_dev = np.std(signal)
+    variance_value = np.var(signal)
+    z_scores = (signal - mean_value) / (std_dev + 1e-12)  # Avoid division by zero
+    mean_z_score = np.mean(z_scores)  # Mean of Z-scores
+    
+    # FFT-Based Features
     N = len(signal)
     fft_values = fft(signal)
     fft_magnitudes = np.abs(fft_values[:N // 2])
@@ -79,9 +90,9 @@ def extract_advanced_features(signal, sampling_rate=240):
     band_power = np.sum(fft_magnitudes[band_mask]**2)
     
     return [
-        total_power, mean_freq, peak_freq, bandwidth, 
-        spectral_entropy, skewness, kurt, band_power, 
-        np.max(fft_magnitudes), np.sum(fft_magnitudes)
+        mean_value, median_value, max_value, min_value, std_dev, variance_value, mean_z_score,
+        total_power, mean_freq, peak_freq, bandwidth, spectral_entropy, skewness, kurt, 
+        band_power, np.max(fft_magnitudes), np.sum(fft_magnitudes)
     ]
 
 st.set_page_config(layout="wide")
@@ -118,11 +129,15 @@ if uploaded_file:
         bead_numbers = sorted(set(entry["bead_number"] for entry in st.session_state["metadata"]))
         selected_bead_numbers = st.sidebar.multiselect("Select Bead Numbers for Clustering", bead_numbers)
     
+    # Update feature names to include basic statistical features
     feature_names = [
+        "Mean", "Median", "Max", "Min", "Standard Deviation", "Variance", "Mean Z-Score",
         "Total Power", "Mean Frequency", "Peak Frequency", "Bandwidth", 
         "Spectral Entropy", "Skewness", "Kurtosis", "Band Power", 
         "Max Amplitude", "Sum of Amplitudes"
     ]
+    
+    # Sidebar: Update "Select Features for Clustering" to include new features
     selected_features = st.sidebar.multiselect("Select Features for Clustering", feature_names, default=feature_names)
     
     if st.sidebar.button("Run K-Means Clustering") and "metadata" in st.session_state:
