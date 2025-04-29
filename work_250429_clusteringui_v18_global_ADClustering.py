@@ -148,7 +148,7 @@ if uploaded_file:
                 cluster_df,
                 x="PCA1",
                 y="PCA2",
-                color="Color",
+                color=cluster_df["Anomaly"].map({-1: "Anomaly", 1: "Normal"}),
                 title="Anomaly Detection Results",
                 hover_data=["File Name", "Bead Number"]
             )
