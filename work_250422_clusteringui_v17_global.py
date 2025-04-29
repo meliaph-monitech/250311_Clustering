@@ -55,45 +55,94 @@ def normalize_signal_with_scaler(signal):
     normalized_signal = scaler.fit_transform(signal_reshaped).flatten()
     return normalized_signal
 
-def extract_advanced_features(signal, sampling_rate=240):
-    if len(signal) == 0:
-        return [0] * 17  # Updated to accommodate new features
+def extract_advanced_features(signal):
+    """Extracts advanced statistical and signal processing features from a signal."""
+    n = len(signal)
+    if n == 0:
+        return [0] * 20
+
+    mean_val = np.mean(signal)
+    std_val = np.std(signal)
+    min_val = np.min(signal)
+    max_val = np.max(signal)
+    median_val = np.median(signal)
+    skewness = skew(signal)
+    kurt = kurtosis(signal)
+    peak_to_peak = max_val - min_val
+    energy = np.sum(signal**2)
+    cv = std_val / mean_val if mean_val != 0 else 0
+
+    signal_fft = fft(signal)
+    psd = np.abs(signal_fft)**2
+    freqs = fftfreq(n, 1)
+    positive_freqs = freqs[:n // 2]
+    positive_psd = psd[:n // 2]
+    psd_normalized = positive_psd / np.sum(positive_psd) if np.sum(positive_psd) > 0 else np.zeros_like(positive_psd)
+    spectral_entropy = -np.sum(psd_normalized * np.log2(psd_normalized + 1e-12))
+
+    autocorrelation = np.corrcoef(signal[:-1], signal[1:])[0, 1] if n > 1 else 0
+    rms = np.sqrt(np.mean(signal**2))
+
+    x = np.arange(n)
+    slope, _ = np.polyfit(x, signal, 1)
+    rolling_window = max(10, n // 10)
+    rolling_mean = np.convolve(signal, np.ones(rolling_window) / rolling_window, mode='valid')
+    moving_average = np.mean(rolling_mean)
+
+    threshold = 3 * std_val
+    outlier_count = np.sum(np.abs(signal - mean_val) > threshold)
+    extreme_event_duration = 0
+    current_duration = 0
+    for value in signal:
+        if np.abs(value - mean_val) > threshold:
+            current_duration += 1
+        else:
+            extreme_event_duration = max(extreme_event_duration, current_duration)
+            current_duration = 0
+
+    return [mean_val, std_val, min_val, max_val, median_val, skewness, kurt, peak_to_peak, energy, cv, 
+            spectral_entropy, autocorrelation, rms, 
+            slope, moving_average, outlier_count, extreme_event_duration]
+
+# def extract_advanced_features(signal, sampling_rate=240):
+#     if len(signal) == 0:
+#         return [0] * 17  # Updated to accommodate new features
     
-    signal = normalize_signal_with_scaler(signal)
+#     signal = normalize_signal_with_scaler(signal)
     
-    # Basic Statistical Features
-    mean_value = np.mean(signal)
-    median_value = np.median(signal)
-    max_value = np.max(signal)
-    min_value = np.min(signal)
-    std_dev = np.std(signal)
-    variance_value = np.var(signal)
-    z_scores = (signal - mean_value) / (std_dev + 1e-12)  # Avoid division by zero
-    mean_z_score = np.mean(z_scores)  # Mean of Z-scores
+#     # Basic Statistical Features
+#     mean_value = np.mean(signal)
+#     median_value = np.median(signal)
+#     max_value = np.max(signal)
+#     min_value = np.min(signal)
+#     std_dev = np.std(signal)
+#     variance_value = np.var(signal)
+#     z_scores = (signal - mean_value) / (std_dev + 1e-12)  # Avoid division by zero
+#     mean_z_score = np.mean(z_scores)  # Mean of Z-scores
     
-    # FFT-Based Features
-    N = len(signal)
-    fft_values = fft(signal)
-    fft_magnitudes = np.abs(fft_values[:N // 2])
-    freqs = fftfreq(N, 1 / sampling_rate)[:N // 2]
+#     # FFT-Based Features
+#     N = len(signal)
+#     fft_values = fft(signal)
+#     fft_magnitudes = np.abs(fft_values[:N // 2])
+#     freqs = fftfreq(N, 1 / sampling_rate)[:N // 2]
     
-    total_power = np.sum(fft_magnitudes**2)
-    mean_freq = np.sum(freqs * fft_magnitudes) / np.sum(fft_magnitudes)
-    peak_freq = freqs[np.argmax(fft_magnitudes)]
-    bandwidth = np.sqrt(np.sum((freqs - mean_freq)**2 * fft_magnitudes) / np.sum(fft_magnitudes))
-    spectral_entropy = -np.sum((fft_magnitudes / np.sum(fft_magnitudes)) * 
-                               np.log2(fft_magnitudes / np.sum(fft_magnitudes) + 1e-12))
-    skewness = skew(fft_magnitudes)
-    kurt = kurtosis(fft_magnitudes)
+#     total_power = np.sum(fft_magnitudes**2)
+#     mean_freq = np.sum(freqs * fft_magnitudes) / np.sum(fft_magnitudes)
+#     peak_freq = freqs[np.argmax(fft_magnitudes)]
+#     bandwidth = np.sqrt(np.sum((freqs - mean_freq)**2 * fft_magnitudes) / np.sum(fft_magnitudes))
+#     spectral_entropy = -np.sum((fft_magnitudes / np.sum(fft_magnitudes)) * 
+#                                np.log2(fft_magnitudes / np.sum(fft_magnitudes) + 1e-12))
+#     skewness = skew(fft_magnitudes)
+#     kurt = kurtosis(fft_magnitudes)
     
-    band_mask = (freqs >= 0) & (freqs <= sampling_rate / 2)
-    band_power = np.sum(fft_magnitudes[band_mask]**2)
+#     band_mask = (freqs >= 0) & (freqs <= sampling_rate / 2)
+#     band_power = np.sum(fft_magnitudes[band_mask]**2)
     
-    return [
-        mean_value, median_value, max_value, min_value, std_dev, variance_value, mean_z_score,
-        total_power, mean_freq, peak_freq, bandwidth, spectral_entropy, skewness, kurt, 
-        band_power, np.max(fft_magnitudes), np.sum(fft_magnitudes)
-    ]
+#     return [
+#         mean_value, median_value, max_value, min_value, std_dev, variance_value, mean_z_score,
+#         total_power, mean_freq, peak_freq, bandwidth, spectral_entropy, skewness, kurt, 
+#         band_power, np.max(fft_magnitudes), np.sum(fft_magnitudes)
+#     ]
 
 st.set_page_config(layout="wide")
 st.title("Global K-Means Clustering Across Selected Bead Numbers")
@@ -136,13 +185,16 @@ if uploaded_file:
     if "metadata" in st.session_state:
         bead_numbers = sorted(set(entry["bead_number"] for entry in st.session_state["metadata"]))
         selected_bead_numbers = st.sidebar.multiselect("Select Bead Numbers for Clustering", bead_numbers)
-    
-    feature_names = [
-        "Mean", "Median", "Max", "Min", "Standard Deviation", "Variance", "Mean Z-Score",
-        "Total Power", "Mean Frequency", "Peak Frequency", "Bandwidth", 
-        "Spectral Entropy", "Skewness", "Kurtosis", "Band Power", 
-        "Max Amplitude", "Sum of Amplitudes"
-    ]
+
+    feature_names = ["Mean Value", "STD Value", "Min Value", "Max Value", "Median Value", "Skewness", "Kurtosis", "Peak-to-Peak", "Energy", "Coefficient of Variation (CV)",
+                         "Spectral Entropy", "Autocorrelation", "Root Mean Square (RMS)", "Slope", "Moving Average",
+                         "Outlier Count", "Extreme Event Duration"]
+    # feature_names = [
+    #     "Mean", "Median", "Max", "Min", "Standard Deviation", "Variance", "Mean Z-Score",
+    #     "Total Power", "Mean Frequency", "Peak Frequency", "Bandwidth", 
+    #     "Spectral Entropy", "Skewness", "Kurtosis", "Band Power", 
+    #     "Max Amplitude", "Sum of Amplitudes"
+    # ]
     selected_features = st.sidebar.multiselect("Select Features for Clustering", feature_names, default=feature_names)
     
     if st.sidebar.button("Run K-Means Clustering") and "metadata" in st.session_state:
