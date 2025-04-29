@@ -11,7 +11,7 @@ from scipy.stats import skew, kurtosis
 from scipy.fft import fft, fftfreq
 import numpy as np
 
-# Helper functions remain the same
+# Helper Functions
 def extract_zip(zip_path, extract_dir="extracted_csvs"):
     if os.path.exists(extract_dir):
         for file in os.listdir(extract_dir):
@@ -79,7 +79,7 @@ def extract_advanced_features(signal):
     return [mean_val, std_val, min_val, max_val, median_val, skewness, kurt, peak_to_peak, energy, cv, 
             spectral_entropy, autocorrelation, rms, slope]
 
-# Streamlit UI Setup
+# Streamlit UI
 st.set_page_config(layout="wide")
 st.title("Anomaly Detection and Clustering for Processed Data")
 
@@ -99,6 +99,10 @@ if uploaded_file:
     threshold = st.sidebar.number_input("Enter filtering threshold", value=0.0)
     num_clusters = st.sidebar.slider("Select Number of Clusters (for anomalies)", min_value=2, max_value=20, value=3)
     
+    feature_names = ["Mean Value", "STD Value", "Min Value", "Max Value", "Median Value", "Skewness", "Kurtosis", "Peak-to-Peak",
+                     "Energy", "Coefficient of Variation (CV)", "Spectral Entropy", "Autocorrelation", "Root Mean Square (RMS)", "Slope"]
+    selected_features = st.sidebar.multiselect("Select Features for Analysis", feature_names, default=feature_names)
+    
     if st.sidebar.button("Run Analysis"):
         with st.spinner("Processing data..."):
             bead_segments = {}
@@ -112,13 +116,20 @@ if uploaded_file:
                         metadata.append({"file": file, "bead_number": bead_num, "start_index": start, "end_index": end})
 
             features_global = []
+            file_bead_info = []
             for entry in metadata:
                 df = pd.read_csv(entry["file"])
                 bead_segment = df.iloc[entry["start_index"]:entry["end_index"] + 1]
                 signal = bead_segment[analysis_column].values
                 signal = normalize_signal_with_scaler(signal)
-                features = extract_advanced_features(signal)
-                features_global.append(features)
+                full_features = extract_advanced_features(signal)
+                feature_indices = [feature_names.index(f) for f in selected_features]
+                selected_feature_values = [full_features[i] for i in feature_indices]
+                features_global.append(selected_feature_values)
+                file_bead_info.append({
+                    "file_name": entry["file"],
+                    "bead_number": entry["bead_number"]
+                })
             
             # Scale features and perform anomaly detection
             scaler = RobustScaler()
@@ -127,28 +138,52 @@ if uploaded_file:
             anomaly_labels = isolation_forest.fit_predict(scaled_features)
             
             # Separate anomalies and normal data
-            anomalies = np.array(scaled_features)[anomaly_labels == -1]
-            normal = np.array(scaled_features)[anomaly_labels == 1]
-            
-            # PCA for visualization
-            pca = PCA(n_components=2)
-            reduced_features = pca.fit_transform(scaled_features)
-            reduced_anomalies = reduced_features[anomaly_labels == -1]
-            reduced_normal = reduced_features[anomaly_labels == 1]
+            reduced_features = PCA(n_components=2).fit_transform(scaled_features)
+            cluster_df = pd.DataFrame({
+                "PCA1": reduced_features[:, 0],
+                "PCA2": reduced_features[:, 1],
+                "Anomaly": ["Anomaly" if label == -1 else "Normal" for label in anomaly_labels],
+                "File Name": [info["file_name"] for info in file_bead_info],
+                "Bead Number": [info["bead_number"] for info in file_bead_info]
+            })
             
             # Plot anomaly detection result
-            fig_anomaly = px.scatter(x=reduced_features[:, 0], y=reduced_features[:, 1],
-                                     color=np.where(anomaly_labels == -1, "Anomaly", "Normal"),
-                                     title="Anomaly Detection Results")
+            fig_anomaly = px.scatter(
+                cluster_df,
+                x="PCA1",
+                y="PCA2",
+                color="Anomaly",
+                hover_data=["File Name", "Bead Number"],
+                title="Anomaly Detection Results"
+            )
+            # Add annotations
+            for i in range(len(cluster_df)):
+                fig_anomaly.add_annotation(
+                    x=cluster_df.loc[i, "PCA1"],
+                    y=cluster_df.loc[i, "PCA2"],
+                    text=str(cluster_df.loc[i, "Bead Number"]),
+                    showarrow=False,
+                    font=dict(size=10, color="black")
+                )
             st.plotly_chart(fig_anomaly)
             
             # Cluster anomalies
+            anomalies = scaled_features[anomaly_labels == -1]
+            anomaly_pca = reduced_features[anomaly_labels == -1]
             kmeans = KMeans(n_clusters=num_clusters, random_state=42)
             anomaly_clusters = kmeans.fit_predict(anomalies)
-            reduced_anomaly_clusters = pca.transform(anomalies)
             
-            # Plot clustering results
-            fig_clusters = px.scatter(x=reduced_features[:, 0], y=reduced_features[:, 1],
-                                       color=np.where(anomaly_labels == -1, anomaly_clusters, "Normal"),
-                                       title="Clustering Results for Anomalies")
+            # Plot clustering results for anomalies
+            cluster_df_anomalies = pd.DataFrame({
+                "PCA1": anomaly_pca[:, 0],
+                "PCA2": anomaly_pca[:, 1],
+                "Cluster": anomaly_clusters
+            })
+            fig_clusters = px.scatter(
+                cluster_df_anomalies,
+                x="PCA1",
+                y="PCA2",
+                color=cluster_df_anomalies["Cluster"].astype(str),
+                title="Clustering Results for Anomalies"
+            )
             st.plotly_chart(fig_clusters)
