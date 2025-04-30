@@ -13,24 +13,6 @@ from scipy.fft import fft, fftfreq
 import numpy as np
 
 # Helper Functions
-# def extract_zip(zip_path, extract_dir="extracted_csvs"):
-#     if os.path.exists(extract_dir):
-#         for file in os.listdir(extract_dir):
-#             os.remove(os.path.join(extract_dir, file))
-#     else:
-#         os.makedirs(extract_dir)
-#     try:
-#         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-#             zip_ref.extractall(extract_dir)
-#     except zipfile.BadZipFile:
-#         st.error("The uploaded file is not a valid ZIP file.")
-#         st.stop()
-#     csv_files = [f for f in os.listdir(extract_dir) if f.endswith('.csv')]
-#     if not csv_files:
-#         st.error("No CSV files found in the ZIP file.")
-#         st.stop()
-#     return [os.path.join(extract_dir, f) for f in csv_files], extract_dir
-
 def extract_zip(zip_path, extract_dir="extracted_csvs"):
     # Clear the extraction directory
     if os.path.exists(extract_dir):
@@ -119,49 +101,71 @@ if uploaded_file:
         f.write(uploaded_file.getbuffer())
     csv_files, extract_dir = extract_zip("temp.zip")
     st.sidebar.success(f"Extracted {len(csv_files)} CSV files")
-    
+
     df_sample = pd.read_csv(csv_files[0])
     columns = df_sample.columns.tolist()
-    
+
+    # Allow user to select analysis column and filtering options
     analysis_column = st.sidebar.selectbox("Select column for signal analysis", columns)
     filter_column = st.sidebar.selectbox("Select column for filtering", columns)
     threshold = st.sidebar.number_input("Enter filtering threshold", value=0.0)
+
+    # Add option to analyze all bead numbers or specific bead numbers
+    bead_selection_mode = st.sidebar.radio(
+        "Select Bead Numbers for Analysis",
+        options=["Analyze All Beads", "Specify Bead Numbers"]
+    )
+
+    specific_beads = []
+    if bead_selection_mode == "Specify Bead Numbers":
+        bead_input = st.sidebar.text_input(
+            "Enter bead numbers (comma-separated)",
+            value=""
+        )
+        if bead_input.strip():
+            try:
+                specific_beads = [int(bead.strip()) for bead in bead_input.split(",")]
+            except ValueError:
+                st.sidebar.error("Invalid input. Please enter integers separated by commas.")
+
+    # Add slider for number of clusters
     num_clusters = st.sidebar.slider("Select Number of Clusters (for anomalies)", min_value=2, max_value=20, value=3)
-    
-    feature_names = ["Mean Value", "STD Value", "Min Value", "Max Value", "Median Value", "Skewness", "Kurtosis", "Peak-to-Peak",
-                     "Energy", "Coefficient of Variation (CV)", "Spectral Entropy", "Autocorrelation", "Root Mean Square (RMS)", "Slope"]
-    selected_features = st.sidebar.multiselect("Select Features for Analysis", feature_names, default=feature_names)
-    
-    if st.sidebar.button("Run Analysis"):
-        with st.spinner("Processing data..."):
-            # Segment beads and extract features
+
+    # Add "Filter Data" button for memory efficiency
+    if st.sidebar.button("Filter Data"):
+        with st.spinner("Filtering data..."):
             metadata = []
             features_global = []
             file_bead_info = []
-            
+
             for file in csv_files:
                 df = pd.read_csv(file)
                 segments = segment_beads(df, filter_column, threshold)
                 for bead_num, (start, end) in enumerate(segments, start=1):
+                    # If specific beads are selected, skip others
+                    if specific_beads and bead_num not in specific_beads:
+                        continue
+
                     bead_segment = df.iloc[start:end + 1]
                     signal = bead_segment[analysis_column].values
                     signal = normalize_signal_with_scaler(signal)
                     full_features = extract_advanced_features(signal)
+
                     feature_indices = [feature_names.index(f) for f in selected_features]
                     selected_feature_values = [full_features[i] for i in feature_indices]
                     features_global.append(selected_feature_values)
                     metadata.append({"file": file, "bead_number": bead_num})
-            
+
             # Scale features and perform anomaly detection
             scaler = RobustScaler()
             scaled_features = scaler.fit_transform(features_global)
             isolation_forest = IsolationForest(random_state=42)
             anomaly_labels = isolation_forest.fit_predict(scaled_features)
-            
+
             # PCA for visualization
             pca = PCA(n_components=2)
             reduced_features = pca.fit_transform(scaled_features)
-            
+
             # Annotate data
             cluster_df = pd.DataFrame({
                 "PCA1": reduced_features[:, 0],
@@ -171,7 +175,7 @@ if uploaded_file:
                 "Bead Number": [m["bead_number"] for m in metadata]
             })
             cluster_df["Annotation"] = cluster_df["File Name"].apply(lambda x: x.split("_")[-1].split(".csv")[0])
-            
+
             # Plot anomaly detection result
             cluster_df["Color"] = cluster_df["Anomaly"].apply(lambda x: "red" if x == -1 else "black")
             fig_anomaly = px.scatter(
@@ -191,19 +195,19 @@ if uploaded_file:
                     font=dict(size=10, color="black")
                 )
             st.plotly_chart(fig_anomaly)
-            
+
             # Cluster anomalies
             anomalies = scaled_features[anomaly_labels == -1]
             anomaly_pca = reduced_features[anomaly_labels == -1]
             kmeans = KMeans(n_clusters=num_clusters, random_state=42)
             anomaly_clusters = kmeans.fit_predict(anomalies)
-            
+
             # Plot clustering results
             cluster_df_anomalies = cluster_df[cluster_df["Anomaly"] == -1].copy()
             cluster_df_anomalies["Cluster"] = anomaly_clusters
             cluster_df["Cluster"] = cluster_df["Anomaly"].apply(lambda x: -1 if x == 1 else None)
             cluster_df.loc[cluster_df["Anomaly"] == -1, "Cluster"] = anomaly_clusters
-            
+
             fig_clusters = px.scatter(
                 cluster_df,
                 x="PCA1",
