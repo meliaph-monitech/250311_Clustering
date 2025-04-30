@@ -1,6 +1,7 @@
 import streamlit as st
 import zipfile
 import os
+import shutil
 import pandas as pd
 import plotly.express as px
 from sklearn.cluster import KMeans
@@ -12,22 +13,51 @@ from scipy.fft import fft, fftfreq
 import numpy as np
 
 # Helper Functions
+# def extract_zip(zip_path, extract_dir="extracted_csvs"):
+#     if os.path.exists(extract_dir):
+#         for file in os.listdir(extract_dir):
+#             os.remove(os.path.join(extract_dir, file))
+#     else:
+#         os.makedirs(extract_dir)
+#     try:
+#         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+#             zip_ref.extractall(extract_dir)
+#     except zipfile.BadZipFile:
+#         st.error("The uploaded file is not a valid ZIP file.")
+#         st.stop()
+#     csv_files = [f for f in os.listdir(extract_dir) if f.endswith('.csv')]
+#     if not csv_files:
+#         st.error("No CSV files found in the ZIP file.")
+#         st.stop()
+#     return [os.path.join(extract_dir, f) for f in csv_files], extract_dir
+
 def extract_zip(zip_path, extract_dir="extracted_csvs"):
+    # Clear the extraction directory
     if os.path.exists(extract_dir):
         for file in os.listdir(extract_dir):
-            os.remove(os.path.join(extract_dir, file))
+            full_path = os.path.join(extract_dir, file)
+            if os.path.isfile(full_path):
+                os.remove(full_path)
+            elif os.path.isdir(full_path):
+                shutil.rmtree(full_path)
     else:
         os.makedirs(extract_dir)
+
+    # Try to extract the ZIP
     try:
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             zip_ref.extractall(extract_dir)
     except zipfile.BadZipFile:
         st.error("The uploaded file is not a valid ZIP file.")
         st.stop()
+
+    # Gather CSV files
     csv_files = [f for f in os.listdir(extract_dir) if f.endswith('.csv')]
+
     if not csv_files:
         st.error("No CSV files found in the ZIP file.")
         st.stop()
+
     return [os.path.join(extract_dir, f) for f in csv_files], extract_dir
 
 def segment_beads(df, column, threshold):
