@@ -106,11 +106,13 @@ if uploaded_file:
     columns = df_sample.columns.tolist()
 
     # Allow user to select analysis column and filtering options
+    st.sidebar.subheader("Signal Analysis Options")
     analysis_column = st.sidebar.selectbox("Select column for signal analysis", columns)
     filter_column = st.sidebar.selectbox("Select column for filtering", columns)
     threshold = st.sidebar.number_input("Enter filtering threshold", value=0.0)
 
     # Add option to analyze all bead numbers or specific bead numbers
+    st.sidebar.subheader("Bead Selection")
     bead_selection_mode = st.sidebar.radio(
         "Select Bead Numbers for Analysis",
         options=["Analyze All Beads", "Specify Bead Numbers"]
@@ -128,17 +130,27 @@ if uploaded_file:
             except ValueError:
                 st.sidebar.error("Invalid input. Please enter integers separated by commas.")
 
-    # Feature selection (already in your code)
-    feature_names = ["Mean Value", "STD Value", "Min Value", "Max Value", "Median Value", "Skewness", "Kurtosis", "Peak-to-Peak",
-                     "Energy", "Coefficient of Variation (CV)", "Spectral Entropy", "Autocorrelation", "Root Mean Square (RMS)", "Slope"]
-    selected_features = st.sidebar.multiselect("Select Features for Analysis", feature_names, default=feature_names)
+    # Feature selection (ensure this is visible in the sidebar)
+    st.sidebar.subheader("Feature Selection")
+    feature_names = [
+        "Mean Value", "STD Value", "Min Value", "Max Value", "Median Value",
+        "Skewness", "Kurtosis", "Peak-to-Peak", "Energy",
+        "Coefficient of Variation (CV)", "Spectral Entropy", "Autocorrelation",
+        "Root Mean Square (RMS)", "Slope"
+    ]
+    selected_features = st.sidebar.multiselect(
+        "Select Features for Analysis",
+        feature_names,
+        default=feature_names
+    )
 
     # Add slider for number of clusters
+    st.sidebar.subheader("Clustering Options")
     num_clusters = st.sidebar.slider("Select Number of Clusters (for anomalies)", min_value=2, max_value=20, value=3)
 
     # Add "Filter Data" button for memory efficiency
-    if st.sidebar.button("Filter Data"):
-        with st.spinner("Filtering data..."):
+    if st.sidebar.button("Run Analysis"):
+        with st.spinner("Processing data..."):
             metadata = []
             features_global = []
             file_bead_info = []
