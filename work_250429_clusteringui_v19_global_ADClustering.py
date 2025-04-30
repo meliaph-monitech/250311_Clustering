@@ -243,3 +243,32 @@ if uploaded_file:
                     font=dict(size=10, color="black")
                 )
             st.plotly_chart(fig_clusters)
+
+# ==================== Summary Table ====================
+
+# Create a new DataFrame combining annotations and cluster info
+summary_df = cluster_df.copy()
+summary_df["Cluster"] = summary_df["Cluster"].astype("Int64")  # Allows NA
+
+# Pivot table: counts grouped by expert annotation and predicted label
+summary_table = pd.pivot_table(
+    summary_df,
+    index="Annotation", 
+    columns="Cluster",
+    values="Bead Number",
+    aggfunc="count",
+    fill_value=0,
+    margins=True,
+    margins_name="Total"
+)
+
+# Rename the cluster columns: Cluster -1 = Normal, Cluster 0/1/... = Anomaly Clusters
+cluster_col_map = {-1: "Normal"}
+for col in summary_table.columns:
+    if col != -1 and col != "Total":
+        cluster_col_map[col] = f"Anomaly Cluster {col}"
+summary_table.rename(columns=cluster_col_map, inplace=True)
+
+# Display
+st.subheader("Summary of Expert Annotations vs. ML Classification")
+st.dataframe(summary_table)
