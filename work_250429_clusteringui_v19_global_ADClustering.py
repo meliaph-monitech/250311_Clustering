@@ -128,6 +128,11 @@ if uploaded_file:
             except ValueError:
                 st.sidebar.error("Invalid input. Please enter integers separated by commas.")
 
+    # Feature selection (already in your code)
+    feature_names = ["Mean Value", "STD Value", "Min Value", "Max Value", "Median Value", "Skewness", "Kurtosis", "Peak-to-Peak",
+                     "Energy", "Coefficient of Variation (CV)", "Spectral Entropy", "Autocorrelation", "Root Mean Square (RMS)", "Slope"]
+    selected_features = st.sidebar.multiselect("Select Features for Analysis", feature_names, default=feature_names)
+
     # Add slider for number of clusters
     num_clusters = st.sidebar.slider("Select Number of Clusters (for anomalies)", min_value=2, max_value=20, value=3)
 
@@ -151,6 +156,7 @@ if uploaded_file:
                     signal = normalize_signal_with_scaler(signal)
                     full_features = extract_advanced_features(signal)
 
+                    # Extract only selected features
                     feature_indices = [feature_names.index(f) for f in selected_features]
                     selected_feature_values = [full_features[i] for i in feature_indices]
                     features_global.append(selected_feature_values)
